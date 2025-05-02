@@ -30,6 +30,7 @@
 #include "sgsap-path.h"
 #include "mme-gtp-path.h"
 #include "metrics.h"
+#include "sbcap-path.h"
 
 static ogs_thread_t *thread;
 static void mme_main(void *data);
@@ -76,6 +77,9 @@ int mme_initialize(void)
     rv = sgsap_open();
     if (rv != OGS_OK) return OGS_ERROR;
 
+    rv = sbcap_open();
+    if (rv != OGS_OK) return OGS_ERROR;
+
     rv = s1ap_open();
     if (rv != OGS_OK) return OGS_ERROR;
 
@@ -98,7 +102,8 @@ void mme_terminate(void)
     mme_gtp_close();
     sgsap_close();
     s1ap_close();
-
+    sbcap_close();
+    
     ogs_metrics_context_close(ogs_metrics_self());
 
     mme_fd_final();
