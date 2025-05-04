@@ -71,6 +71,7 @@ void sbcap_handle_write_replace_warning_request(
     SBCAP_Write_Replace_Warning_Request_IEs_t *ie = NULL;
     SBCAP_Message_Identifier_t *message_identifier = NULL;
     SBCAP_Serial_Number_t *serial_number                      = NULL;
+   //  SBCAP_Warning_Type_t *warning_type                      = NULL;
     SBCAP_Repetition_Period_t *repetition_period    = NULL;
     SBCAP_NumberOfBroadcasts_t *broadcast_requested    = NULL;
     SBCAP_Data_Coding_Scheme_t *data_coding_scheme    = NULL;
@@ -116,9 +117,19 @@ void sbcap_handle_write_replace_warning_request(
                    ogs_debug("serial_number: %s",serial_number->buf);
                    uint16_t serial_number_i = 0;
                    memcpy(&serial_number_i,serial_number->buf, sizeof(uint16_t));  //Obrce redosled Bytova
+                   ogs_info("serial_number: %d",serial_number_i);
                    sbc_pws ->serial_number = serial_number_i;
 
                 break;
+               //  case SBCAP_ProtocolIE_ID_id_Warning_Type:
+               //     warning_type = &ie->value.choice.Warning_Type;
+               //     ogs_debug("warning_type: %s",warning_type->buf);
+               //     uint8_t warning_type_i = 0;
+               //     memcpy(&warning_type_i,warning_type->buf, sizeof(uint8_t));  //sai
+               //     ogs_info("warning_type: %d",warning_type_i);
+               //     sbc_pws -> warning_type = warning_type_i;
+
+               //  break;
                 case SBCAP_ProtocolIE_ID_id_Repetition_Period :
                    repetition_period = &ie->value.choice.Repetition_Period;
                    ogs_info("repetition_period: %ld",*repetition_period);
@@ -133,7 +144,11 @@ void sbcap_handle_write_replace_warning_request(
                 case SBCAP_ProtocolIE_ID_id_Data_Coding_Scheme :
                    data_coding_scheme = &ie->value.choice.Data_Coding_Scheme;
                    ogs_debug("data_coding_scheme: %s",data_coding_scheme->buf);
-                   sbc_pws->data_coding_scheme = 0xFF & 0xFF;
+                   uint8_t data_coding_scheme_i = 0;
+                   memcpy(&data_coding_scheme_i,data_coding_scheme->buf, sizeof(uint8_t));  //sai
+                   ogs_info("data_coding_scheme: %d",data_coding_scheme_i);
+                   sbc_pws -> data_coding_scheme = 0x0F;
+                  //  sbc_pws->data_coding_scheme = 0xFF & 0xFF; //sairisan test
                 break;
                case SBCAP_ProtocolIE_ID_id_Warning_Message_Content :
                    warning_message_content = &ie->value.choice.Warning_Message_Content;
