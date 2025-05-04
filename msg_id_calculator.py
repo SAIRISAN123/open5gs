@@ -22,11 +22,11 @@ def encode(n):
 # to ensure valid input
 while True:
     try:
-        user_input = int(input("Enter a non-negative integer: "))
+        user_input = int(input("Enter API tool msg_id no (dec): "))
         if user_input < 0:
             print("Please enter a non-negative integer.")
         else:
             result = encode(user_input)
-            print(f"Input: {user_input}, Output: {result}")
+            print(f"Input: {user_input}, Output in S1AP Write_Replace: {result}")
     except ValueError:
         print("Invalid input. Please enter a non-negative integer.")
