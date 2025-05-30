@@ -146,7 +146,7 @@ void sbcap_handle_write_replace_warning_request(
                    ogs_debug("data_coding_scheme: %s",data_coding_scheme->buf);
                    uint8_t data_coding_scheme_i = 0;
                    memcpy(&data_coding_scheme_i,data_coding_scheme->buf, sizeof(uint8_t));  //sai
-                   ogs_info("data_coding_scheme: %d",data_coding_scheme_i);
+                  //  ogs_info("data_coding_scheme: %d",data_coding_scheme_i);
                    sbc_pws -> data_coding_scheme = 0x0F;
                   //  sbc_pws->data_coding_scheme = 0xFF & 0xFF; //sairisan test
                 break;
@@ -180,9 +180,86 @@ void sbcap_handle_write_replace_warning_request(
       }
     }
     sbc_handle_write_replace_warning_request(sbc_pws);
-    sbc_handle_stop_warning_request(sbc_pws);
+   //  sbc_handle_stop_warning_request(sbc_pws);
     ogs_debug("    IP[%s]",
             OGS_ADDR(sbc->sctp.addr, buf));
 
 }
 
+
+
+void sbcap_handle_stop_warning_request(
+   mme_sbcap_t *sbc, ogs_sbcap_message_t *message)
+{
+char buf[OGS_ADDRSTRLEN];
+int i;
+
+SBCAP_InitiatingMessage_t *initiatingMessage = NULL;
+SBCAP_Stop_Warning_Request_t *SbcapStopWarningRequest = NULL;
+SBCAP_Stop_Warning_Request_IEs_t *ie = NULL;
+SBCAP_Message_Identifier_t *message_identifier = NULL;
+// SBCAP_Serial_Number_t *serial_number = NULL;
+
+sbc_pws_data_t *sbc_pws = NULL;
+sbc_pws = (sbc_pws_data_t*)malloc(sizeof(sbc_pws_data_t));
+ogs_assert(sbc_pws);
+
+ogs_assert(sbc);
+ogs_assert(sbc->sctp.sock);
+
+ogs_assert(message);
+initiatingMessage = message->choice.initiatingMessage;
+ogs_assert(initiatingMessage);
+SbcapStopWarningRequest =
+   &initiatingMessage->value.choice.Stop_Warning_Request;
+ogs_assert(SbcapStopWarningRequest);
+
+ogs_debug("SbcapStopWarningRequest");
+
+for (i = 0; i < SbcapStopWarningRequest->protocolIEs.list.count; i++) {
+   ie = SbcapStopWarningRequest->protocolIEs.list.array[i];
+   switch (ie->id) {
+       case SBCAP_ProtocolIE_ID_id_Message_Identifier:
+           message_identifier = &ie->value.choice.Message_Identifier;
+           int message = 0;
+           memcpy(&message, message_identifier->buf, sizeof(uint16_t)); // Reverse byte order
+           ogs_debug("message_identifier: %ld", message_identifier->size);
+           ogs_info("message_identifier: %d", message);
+           sbc_pws->message_id = message;
+           ogs_log_hexdump(OGS_LOG_INFO, message_identifier->buf, message_identifier->size);
+           break;
+
+      //  case SBCAP_ProtocolIE_ID_id_Serial_Number:
+      //      serial_number = &ie->value.choice.Serial_Number;
+      //      uint16_t serial_number_i = 0;
+      //      memcpy(&serial_number_i, serial_number->buf, sizeof(uint16_t)); // Reverse byte order
+      //      ogs_debug("serial_number: %s", serial_number->buf);
+      //      ogs_info("serial_number: %d", serial_number_i);
+      //      sbc_pws->serial_number = serial_number_i;
+      //      break;
+
+       default:
+           ogs_warn("Unhandled IE: %ld", ie->id);
+           break;
+   }
+}
+
+mme_enb_t *enb = NULL;
+ogs_list_for_each(&mme_self()->enb_list, enb) {
+   for (i = 0; i < enb->num_of_supported_ta_list; i++) {
+       ogs_debug("eNB Tac = %d", enb->supported_ta_list[i].tac);
+       sbc_pws->tai[i] = enb->supported_ta_list[i];
+       sbc_pws->no_of_tai = i + 1;
+       ogs_debug("SBcAP Tac = %d", sbc_pws->tai[i].tac);
+       ogs_debug("SBcAP no_of_tai = %d", sbc_pws->no_of_tai);
+       if (i > 15) {
+           break;
+       }
+   }
+}
+
+sbc_handle_stop_warning_request(sbc_pws);
+ogs_debug("    IP[%s]", OGS_ADDR(sbc->sctp.addr, buf));
+
+free(sbc_pws); // Free allocated memory
+}
