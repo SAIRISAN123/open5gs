@@ -146,9 +146,9 @@ void sbcap_handle_write_replace_warning_request(
                    ogs_debug("data_coding_scheme: %s",data_coding_scheme->buf);
                    uint8_t data_coding_scheme_i = 0;
                    memcpy(&data_coding_scheme_i,data_coding_scheme->buf, sizeof(uint8_t));  //sai
-                  //  ogs_info("data_coding_scheme: %d",data_coding_scheme_i);
-                   sbc_pws -> data_coding_scheme = 0x0F;
-                  //  sbc_pws->data_coding_scheme = 0xFF & 0xFF; //sairisan test
+                   ogs_info("data_coding_scheme: %d",data_coding_scheme_i);
+                   sbc_pws -> data_coding_scheme = data_coding_scheme_i; //sai
+           
                 break;
                case SBCAP_ProtocolIE_ID_id_Warning_Message_Content :
                    warning_message_content = &ie->value.choice.Warning_Message_Content;
