@@ -119,7 +119,7 @@ void ngap_state_operational(ogs_fsm_t *s, amf_event_t *e)
                 ngap_handle_ran_configuration_update(gnb, pdu);
                 break;
             case NGAP_ProcedureCode_id_WriteReplaceWarning:
-                ngap_handle_write_replace_warning_request(gnb, pdu);
+                ngap_handle_write_replace_warning_response(gnb, pdu);
                 break;
             case NGAP_ProcedureCode_id_NGReset:
                 ngap_handle_ng_reset(gnb, pdu);

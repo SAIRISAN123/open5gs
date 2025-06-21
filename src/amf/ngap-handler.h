@@ -79,11 +79,6 @@ void ngap_handle_handover_notification(
 void ngap_handle_ran_configuration_update(
         amf_gnb_t *gnb, ogs_ngap_message_t *message);
 
-void ngap_handle_write_replace_warning_request(
-        amf_gnb_t *gnb, ogs_ngap_message_t *message);
-void ngap_handle_write_replace_warning_response(
-        amf_gnb_t *gnb, ogs_ngap_message_t *message);
-
 void ngap_handle_ng_reset(
         amf_gnb_t *gnb, ogs_ngap_message_t *message);
 void ngap_handle_error_indication(
