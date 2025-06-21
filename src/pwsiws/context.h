@@ -123,9 +123,6 @@ typedef struct pwsiws_context_s {
     /* SBCAP Server Lists */
     ogs_list_t      sbcap_list;         /* SBCAP IPv4 Server List */
 
-    /* SBCAP Client Lists */
-    ogs_list_t      sbcap_client_list;  /* SBCAP IPv4 Client List */
-
     /* Generator for unique identification */
     uint32_t        warning_id_generator; /* Warning ID generator */
     uint32_t        message_id_generator; /* Message ID generator */

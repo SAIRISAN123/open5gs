@@ -26,14 +26,14 @@ static void lksctp_accept_handler(short when, ogs_socket_t fd, void *data);
 int sbcap_open(void)
 {
     ogs_socknode_t *node = NULL;
+    char buf[OGS_ADDRSTRLEN];
 
-    // Start SBCAP server
-    ogs_list_for_each(&pwsiws_self()->sbcap_list, node)
+    // Start SBCAP server only
+    ogs_list_for_each(&pwsiws_self()->sbcap_list, node) {
         if (sbcap_server(node) == NULL) return OGS_ERROR;
-
-    // Connect to external CBC as client
-    ogs_list_for_each(&pwsiws_self()->sbcap_client_list, node)
-        if (sbcap_client(node) == NULL) return OGS_ERROR;
+        ogs_info("PWS-IWS SBCAP server listening on [%s]:%d",
+                OGS_ADDR(node->addr, buf), OGS_PORT(node->addr));
+    }
 
     return OGS_OK;
 }
@@ -41,7 +41,6 @@ int sbcap_open(void)
 void sbcap_close(void)
 {
     ogs_socknode_remove_all(&pwsiws_self()->sbcap_list);
-    ogs_socknode_remove_all(&pwsiws_self()->sbcap_client_list);
 }
 
 ogs_sock_t *sbcap_server(ogs_socknode_t *node)
@@ -243,27 +242,4 @@ int sbcap_send(ogs_sock_t *sock,
     ogs_sctp_stream_no_in_pkbuf(pkbuf) = stream_no;
 
     return ogs_sctp_senddata(sock, pkbuf, addr);
-}
-
-ogs_sock_t *sbcap_client(ogs_socknode_t *node)
-{
-    char buf[OGS_ADDRSTRLEN];
-    ogs_sock_t *sock = NULL;
-
-    ogs_assert(node);
-
-    sock = ogs_sctp_client(SOCK_STREAM, node->addr, NULL, NULL);
-    if (!sock) {
-        ogs_error("Failed to connect to CBC at [%s]:%d",
-                OGS_ADDR(node->addr, buf), OGS_PORT(node->addr));
-        return NULL;
-    }
-
-    node->sock = sock;
-    node->cleanup = ogs_sctp_destroy;
-
-    ogs_info("SBCAP client connected to CBC [%s]:%d",
-            OGS_ADDR(node->addr, buf), OGS_PORT(node->addr));
-
-    return sock;
 } 

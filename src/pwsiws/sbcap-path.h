@@ -30,7 +30,6 @@ int sbcap_open(void);
 void sbcap_close(void);
 
 ogs_sock_t *sbcap_server(ogs_socknode_t *node);
-ogs_sock_t *sbcap_client(ogs_socknode_t *node);
 void sbcap_recv_upcall(short when, ogs_socket_t fd, void *data);
 
 void sbcap_accept_handler(ogs_sock_t *sock);

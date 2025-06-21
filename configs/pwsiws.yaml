@@ -7,7 +7,6 @@ pwsiws:
       amf:
         - uri: http://127.0.0.5:7777
   sbcap:
-    client:
-      cbc:
-        - address: 127.0.0.1  # <-- Change to your CBC IP if needed
-          port: 29168 
+    server:
+      - address: 127.0.0.199  # PWS-IWS SBCAP server address
+        port: 29168           # PWS-IWS SBCAP server port 

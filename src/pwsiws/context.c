@@ -15,7 +15,6 @@ void pwsiws_context_init(void)
     ogs_list_init(&self.pws_iws_list);
     ogs_list_init(&self.pws_iws_list6);
     ogs_list_init(&self.sbcap_list);
-    ogs_list_init(&self.sbcap_client_list);
 
     self.amf_sbi = NULL;
 }
@@ -39,24 +38,27 @@ pwsiws_context_t *pwsiws_self(void)
 
 int pwsiws_context_parse_config(void)
 {
-    // TODO: Implement proper YAML parsing for CBC client configuration
-    // For now, we'll use a hardcoded configuration
+    // Hardcode SBCAP server configuration for now
     ogs_sockaddr_t *addr = NULL;
     ogs_socknode_t *node = NULL;
+    char buf[OGS_ADDRSTRLEN];
     
-    // Create a hardcoded CBC client connection
+    // Create SBCAP server configuration
     addr = ogs_calloc(1, sizeof(ogs_sockaddr_t));
     ogs_assert(addr);
     
-    // Set to localhost for testing - update this to your CBC IP
+    // Set to 127.0.0.199:29168 as configured in YAML
     addr->sa.sa_family = AF_INET;
-    addr->sin.sin_addr.s_addr = htonl(INADDR_LOOPBACK);
-    addr->sin.sin_port = htons(29168); // Default SBCAP port
+    addr->sin.sin_addr.s_addr = inet_addr("127.0.0.199");
+    addr->sin.sin_port = htons(29168);
     
-    node = ogs_socknode_add(&self.sbcap_client_list, AF_INET, addr, NULL);
+    node = ogs_socknode_add(&self.sbcap_list, AF_INET, addr, NULL);
     ogs_assert(node);
     
-    ogs_info("CBC client configured: [127.0.0.1]:29168");
+    ogs_info("PWS-IWS SBCAP server configured: [%s]:%d", 
+            OGS_ADDR(addr, buf), OGS_PORT(addr));
+    ogs_info("PWS-IWS configured as SBCAP server");
+    ogs_info("SBCAP server list count: %d", ogs_list_count(&self.sbcap_list));
     
     return OGS_OK;
 }
