@@ -91,9 +91,14 @@ typedef enum {
     OGS_SBI_SERVICE_TYPE_NSPAF_SECURED_PACKET,
     OGS_SBI_SERVICE_TYPE_NUDSF_DR,
     OGS_SBI_SERVICE_TYPE_NNSSAAF_NSSAA,
-
-    OGS_SBI_MAX_NUM_OF_SERVICE_TYPE,
+    OGS_SBI_SERVICE_TYPE_N32C_HANDSHAKE,
+    OGS_SBI_SERVICE_TYPE_NAMF_CALLBACK,
+    OGS_SBI_SERVICE_TYPE_NSMF_CALLBACK,
+    OGS_SBI_SERVICE_TYPE_NPWSIWS,
+    OGS_SBI_SERVICE_TYPE_MAX,
 } ogs_sbi_service_type_e;
+
+#define OGS_SBI_MAX_NUM_OF_SERVICE_TYPE OGS_SBI_SERVICE_TYPE_MAX
 
 #define OGS_SBI_SERVICE_NAME_NNRF_NFM "nnrf-nfm"
 #define OGS_SBI_SERVICE_NAME_NNRF_DISC "nnrf-disc"
@@ -160,6 +165,7 @@ typedef enum {
 
 #define OGS_SBI_SERVICE_NAME_NAMF_CALLBACK "namf-callback"
 #define OGS_SBI_SERVICE_NAME_NSMF_CALLBACK "nsmf-callback"
+#define OGS_SBI_SERVICE_NAME_NPWSIWS "npwsiws"
 
 OpenAPI_nf_type_e ogs_sbi_service_type_to_nf_type(
         ogs_sbi_service_type_e service_type);

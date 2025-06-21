@@ -630,8 +630,6 @@ void ngap_handle_uplink_nas_transport(
     NGAP_UserLocationInformation_t *UserLocationInformation = NULL;
     NGAP_UserLocationInformationNR_t *UserLocationInformationNR = NULL;
 
-    ogs_5gs_tai_t nr_tai;
-    int served_tai_index = 0;
 
     ogs_assert(gnb);
     ogs_assert(gnb->sctp.sock);
@@ -744,22 +742,6 @@ void ngap_handle_uplink_nas_transport(
     UserLocationInformationNR =
         UserLocationInformation->choice.userLocationInformationNR;
     ogs_assert(UserLocationInformationNR);
-    ogs_ngap_ASN_to_5gs_tai(&UserLocationInformationNR->tAI, &nr_tai);
-
-    served_tai_index = amf_find_served_tai(&nr_tai);
-    if (served_tai_index < 0) {
-        ogs_error("Cannot find Served TAI[PLMN_ID:%06x,TAC:%d]",
-            ogs_plmn_id_hexdump(&nr_tai.plmn_id), nr_tai.tac.v);
-        r = ngap_send_error_indication(
-                gnb, &ran_ue->ran_ue_ngap_id, &ran_ue->amf_ue_ngap_id,
-                NGAP_Cause_PR_protocol,
-                NGAP_CauseProtocol_message_not_compatible_with_receiver_state);
-        ogs_expect(r == OGS_OK);
-        ogs_assert(r != OGS_ERROR);
-        return;
-    }
-    ogs_debug("    SERVED_TAI_INDEX[%d]", served_tai_index);
-
     ogs_ngap_ASN_to_nr_cgi(
             &UserLocationInformationNR->nR_CGI, &ran_ue->saved.nr_cgi);
     ogs_ngap_ASN_to_5gs_tai(
@@ -879,7 +861,6 @@ void ngap_handle_ue_radio_capability_info_indication(
     if (amf_ue)
         OGS_ASN_STORE_DATA(&amf_ue->ueRadioCapability, UERadioCapability);
 }
-
 void ngap_handle_initial_context_setup_response(
         amf_gnb_t *gnb, ogs_ngap_message_t *message)
 {
@@ -2720,14 +2701,14 @@ void ngap_handle_path_switch_request(
         *eUTRAintegrityProtectionAlgorithms = NULL;
     uint16_t nr_ea = 0, nr_ia = 0, eutra_ea = 0, eutra_ia = 0;
     uint8_t nr_ea0 = 0, nr_ia0 = 0, eutra_ea0 = 0, eutra_ia0 = 0;
+    ogs_5gs_tai_t nr_tai;
+    int served_tai_index = 0;
 
     NGAP_PDUSessionResourceToBeSwitchedDLItem_t *PDUSessionItem = NULL;
     OCTET_STRING_t *transfer = NULL;
 
     amf_nsmf_pdusession_sm_context_param_t param;
 
-    ogs_5gs_tai_t nr_tai;
-    int served_tai_index = 0;
 
     ogs_assert(gnb);
     ogs_assert(gnb->sctp.sock);
@@ -4495,6 +4476,229 @@ void ngap_handle_ran_configuration_update(
     ogs_expect(OGS_OK == ngap_send_ran_configuration_update_ack(gnb));
 }
 
+void ngap_handle_write_replace_warning_request(
+        amf_gnb_t *gnb, ogs_ngap_message_t *message)
+{
+    char buf[OGS_ADDRSTRLEN];
+    int i;
+
+    NGAP_InitiatingMessage_t *initiatingMessage = NULL;
+    NGAP_WriteReplaceWarningRequest_t *WriteReplaceWarningRequest = NULL;
+    NGAP_WriteReplaceWarningRequestIEs_t *ie = NULL;
+    NGAP_MessageIdentifier_t *MessageIdentifier = NULL;
+    NGAP_SerialNumber_t *SerialNumber = NULL;
+    NGAP_WarningAreaList_t *WarningAreaList = NULL;
+    NGAP_RepetitionPeriod_t *RepetitionPeriod = NULL;
+    NGAP_NumberOfBroadcastsRequested_t *NumberOfBroadcastsRequested = NULL;
+    NGAP_WarningType_t *WarningType = NULL;
+    NGAP_WarningSecurityInfo_t *WarningSecurityInfo = NULL;
+    NGAP_DataCodingScheme_t *DataCodingScheme = NULL;
+    NGAP_WarningMessageContents_t *WarningMessageContents = NULL;
+    NGAP_ConcurrentWarningMessageInd_t *ConcurrentWarningMessageInd = NULL;
+    NGAP_WarningAreaCoordinates_t *WarningAreaCoordinates = NULL;
+
+    ogs_assert(gnb);
+    ogs_assert(gnb->sctp.sock);
+
+    ogs_assert(message);
+    initiatingMessage = message->choice.initiatingMessage;
+    ogs_assert(initiatingMessage);
+    WriteReplaceWarningRequest = &initiatingMessage->value.choice.WriteReplaceWarningRequest;
+    ogs_assert(WriteReplaceWarningRequest);
+
+    ogs_debug("WriteReplaceWarningRequest");
+
+    for (i = 0; i < WriteReplaceWarningRequest->protocolIEs.list.count; i++) {
+        ie = WriteReplaceWarningRequest->protocolIEs.list.array[i];
+        switch (ie->id) {
+        case NGAP_ProtocolIE_ID_id_MessageIdentifier:
+            MessageIdentifier = &ie->value.choice.MessageIdentifier;
+            break;
+        case NGAP_ProtocolIE_ID_id_SerialNumber:
+            SerialNumber = &ie->value.choice.SerialNumber;
+            break;
+        case NGAP_ProtocolIE_ID_id_WarningAreaList:
+            WarningAreaList = &ie->value.choice.WarningAreaList;
+            break;
+        case NGAP_ProtocolIE_ID_id_RepetitionPeriod:
+            RepetitionPeriod = &ie->value.choice.RepetitionPeriod;
+            break;
+        case NGAP_ProtocolIE_ID_id_NumberOfBroadcastsRequested:
+            NumberOfBroadcastsRequested = &ie->value.choice.NumberOfBroadcastsRequested;
+            break;
+        case NGAP_ProtocolIE_ID_id_WarningType:
+            WarningType = &ie->value.choice.WarningType;
+            break;
+        case NGAP_ProtocolIE_ID_id_WarningSecurityInfo:
+            WarningSecurityInfo = &ie->value.choice.WarningSecurityInfo;
+            break;
+        case NGAP_ProtocolIE_ID_id_DataCodingScheme:
+            DataCodingScheme = &ie->value.choice.DataCodingScheme;
+            break;
+        case NGAP_ProtocolIE_ID_id_WarningMessageContents:
+            WarningMessageContents = &ie->value.choice.WarningMessageContents;
+            break;
+        case NGAP_ProtocolIE_ID_id_ConcurrentWarningMessageInd:
+            ConcurrentWarningMessageInd = &ie->value.choice.ConcurrentWarningMessageInd;
+            break;
+        case NGAP_ProtocolIE_ID_id_WarningAreaCoordinates:
+            WarningAreaCoordinates = &ie->value.choice.WarningAreaCoordinates;
+            break;
+        default:
+            ogs_warn("Unknown IE: %ld", ie->id);
+            break;
+        }
+    }
+
+    if (MessageIdentifier) {
+        ogs_debug("    MessageIdentifier[%zu bytes]", MessageIdentifier->size);
+    }
+
+    if (SerialNumber) {
+        ogs_debug("    SerialNumber[%zu bytes]", SerialNumber->size);
+    }
+
+    if (RepetitionPeriod) {
+        ogs_debug("    RepetitionPeriod[%ld]", *RepetitionPeriod);
+    }
+
+    if (NumberOfBroadcastsRequested) {
+        ogs_debug("    NumberOfBroadcastsRequested[%ld]", *NumberOfBroadcastsRequested);
+    }
+
+    if (WarningType) {
+        ogs_debug("    WarningType[%zu bytes]", WarningType->size);
+    }
+
+    if (DataCodingScheme) {
+        ogs_debug("    DataCodingScheme[%zu bytes]", DataCodingScheme->size);
+    }
+
+    if (WarningMessageContents) {
+        ogs_debug("    WarningMessageContents[%zu bytes]", WarningMessageContents->size);
+    }
+
+    if (ConcurrentWarningMessageInd) {
+        ogs_debug("    ConcurrentWarningMessageInd[%ld]", *ConcurrentWarningMessageInd);
+    }
+
+    if (WarningAreaList) {
+        switch (WarningAreaList->present) {
+        case NGAP_WarningAreaList_PR_eUTRA_CGIListForWarning:
+            ogs_debug("    WarningAreaList: eUTRA_CGIListForWarning");
+            break;
+        case NGAP_WarningAreaList_PR_nR_CGIListForWarning:
+            ogs_debug("    WarningAreaList: nR_CGIListForWarning");
+            break;
+        case NGAP_WarningAreaList_PR_tAIListForWarning:
+            ogs_debug("    WarningAreaList: tAIListForWarning");
+            break;
+        case NGAP_WarningAreaList_PR_emergencyAreaIDList:
+            ogs_debug("    WarningAreaList: emergencyAreaIDList");
+            break;
+        case NGAP_WarningAreaList_PR_choice_Extensions:
+            ogs_debug("    WarningAreaList: choice_Extensions");
+            break;
+        default:
+            ogs_debug("    WarningAreaList: unknown type");
+            break;
+        }
+    }
+
+    if (WarningSecurityInfo) {
+        ogs_debug("    WarningSecurityInfo present");
+    }
+
+    if (WarningAreaCoordinates) {
+        ogs_debug("    WarningAreaCoordinates present");
+    }
+
+    ogs_debug("    IP[%s]", OGS_ADDR(gnb->sctp.addr, buf));
+
+    /* TODO: Implement warning message processing logic */
+    /* This could involve:
+     * - Validating the warning message
+     * - Storing the warning information
+     * - Broadcasting to relevant gNBs
+     * - Sending response back to the requesting entity
+     */
+
+    // 1. Iterate over all gNBs
+    amf_gnb_t *target_gnb = NULL;
+    ogs_list_for_each(&amf_self()->gnb_list, target_gnb) {
+        // 2. Check if this gNB serves an area in the WarningAreaList
+        if (gnb_in_warning_area(target_gnb, WarningAreaList)) {
+            // TODO: Implement warning message sending
+            ogs_debug("Would send warning to gNB[%s]", OGS_ADDR(target_gnb->sctp.addr, buf));
+        }
+    }
+}
+
+void ngap_handle_write_replace_warning_response(
+        amf_gnb_t *gnb, ogs_ngap_message_t *message)
+{
+    char buf[OGS_ADDRSTRLEN];
+    int i;
+
+    NGAP_SuccessfulOutcome_t *successfulOutcome = NULL;
+    NGAP_WriteReplaceWarningResponse_t *WriteReplaceWarningResponse = NULL;
+    NGAP_WriteReplaceWarningResponseIEs_t *ie = NULL;
+    NGAP_MessageIdentifier_t *MessageIdentifier = NULL;
+    NGAP_SerialNumber_t *SerialNumber = NULL;
+    NGAP_BroadcastCompletedAreaList_t *BroadcastCompletedAreaList = NULL;
+
+    ogs_assert(gnb);
+    ogs_assert(gnb->sctp.sock);
+
+    ogs_assert(message);
+    successfulOutcome = message->choice.successfulOutcome;
+    ogs_assert(successfulOutcome);
+    WriteReplaceWarningResponse = &successfulOutcome->value.choice.WriteReplaceWarningResponse;
+    ogs_assert(WriteReplaceWarningResponse);
+
+    ogs_debug("WriteReplaceWarningResponse");
+
+    for (i = 0; i < WriteReplaceWarningResponse->protocolIEs.list.count; i++) {
+        ie = WriteReplaceWarningResponse->protocolIEs.list.array[i];
+        switch (ie->id) {
+        case NGAP_ProtocolIE_ID_id_MessageIdentifier:
+            MessageIdentifier = &ie->value.choice.MessageIdentifier;
+            break;
+        case NGAP_ProtocolIE_ID_id_SerialNumber:
+            SerialNumber = &ie->value.choice.SerialNumber;
+            break;
+        case NGAP_ProtocolIE_ID_id_BroadcastCompletedAreaList:
+            BroadcastCompletedAreaList = &ie->value.choice.BroadcastCompletedAreaList;
+            break;
+        default:
+            ogs_warn("Unknown IE: %ld", ie->id);
+            break;
+        }
+    }
+
+    if (MessageIdentifier) {
+        ogs_debug("    MessageIdentifier[%zu bytes]", MessageIdentifier->size);
+    }
+
+    if (SerialNumber) {
+        ogs_debug("    SerialNumber[%zu bytes]", SerialNumber->size);
+    }
+
+    if (BroadcastCompletedAreaList) {
+        ogs_debug("    BroadcastCompletedAreaList present");
+    }
+
+    ogs_debug("    IP[%s]", OGS_ADDR(gnb->sctp.addr, buf));
+
+    /* TODO: Implement response processing logic */
+    /* This could involve:
+     * - Updating warning message status
+     * - Logging completion of warning broadcast
+     * - Cleaning up any temporary resources
+     */
+}
+
+
 void ngap_handle_ng_reset(
         amf_gnb_t *gnb, ogs_ngap_message_t *message)
 {
@@ -4801,3 +5005,214 @@ void ngap_handle_error_indication(amf_gnb_t *gnb, ogs_ngap_message_t *message)
                 Cause->present, (int)Cause->choice.radioNetwork);
     }
 }
+
+int ngap_broadcast_warning_to_gnb(
+        amf_gnb_t *gnb,
+        int message_identifier,
+        int serial_number,
+        const char *warning_message_contents,
+        int repetition_period,
+        int number_of_broadcasts_requested,
+        int warning_type,
+        int data_coding_scheme,
+        int concurrent_warning_message_ind)
+{
+    ogs_pkbuf_t *pkbuf = NULL;
+    int rv;
+    char buf[OGS_ADDRSTRLEN];
+
+    ogs_assert(gnb);
+    ogs_assert(warning_message_contents);
+
+    ogs_debug("Broadcasting warning to gNB[%s]", OGS_ADDR(gnb->sctp.addr, buf));
+
+    /* Build WriteReplaceWarningRequest message */
+    pkbuf = ngap_build_write_replace_warning_request(
+        message_identifier,
+        serial_number,
+        NULL, /* WarningAreaList - TODO: implement area matching */
+        repetition_period,
+        number_of_broadcasts_requested,
+        warning_type,
+        NULL, /* WarningSecurityInfo - TODO: implement if needed */
+        data_coding_scheme,
+        warning_message_contents,
+        concurrent_warning_message_ind,
+        NULL  /* WarningAreaCoordinates - TODO: implement if needed */
+    );
+
+    if (!pkbuf) {
+        ogs_error("Failed to build WriteReplaceWarningRequest");
+        return OGS_ERROR;
+    }
+
+    /* Send the message to the gNB */
+    rv = ngap_send_to_gnb(gnb, pkbuf, NGAP_NON_UE_SIGNALLING);
+    if (rv != OGS_OK) {
+        ogs_error("Failed to send WriteReplaceWarningRequest to gNB");
+        ogs_pkbuf_free(pkbuf);
+        return OGS_ERROR;
+    }
+
+    ogs_pkbuf_free(pkbuf);
+    return OGS_OK;
+}
+
+ogs_pkbuf_t *ngap_build_write_replace_warning_request(
+        int message_identifier,
+        int serial_number,
+        void *warning_area_list,
+        int repetition_period,
+        int number_of_broadcasts_requested,
+        int warning_type,
+        void *warning_security_info,
+        int data_coding_scheme,
+        const char *warning_message_contents,
+        int concurrent_warning_message_ind,
+        void *warning_area_coordinates)
+{
+    ogs_pkbuf_t *pkbuf = NULL;
+    NGAP_NGAP_PDU_t pdu;
+    NGAP_InitiatingMessage_t *initiatingMessage = NULL;
+    NGAP_WriteReplaceWarningRequest_t *WriteReplaceWarningRequest = NULL;
+    NGAP_WriteReplaceWarningRequestIEs_t *ie = NULL;
+
+    ogs_assert(warning_message_contents);
+
+    ogs_debug("Building WriteReplaceWarningRequest");
+
+    memset(&pdu, 0, sizeof(NGAP_NGAP_PDU_t));
+    pdu.present = NGAP_NGAP_PDU_PR_initiatingMessage;
+    pdu.choice.initiatingMessage = CALLOC(1, sizeof(NGAP_InitiatingMessage_t));
+
+    initiatingMessage = pdu.choice.initiatingMessage;
+    initiatingMessage->procedureCode = NGAP_ProcedureCode_id_WriteReplaceWarning;
+    initiatingMessage->criticality = NGAP_Criticality_reject;
+    initiatingMessage->value.present = NGAP_InitiatingMessage__value_PR_WriteReplaceWarningRequest;
+
+    WriteReplaceWarningRequest = &initiatingMessage->value.choice.WriteReplaceWarningRequest;
+
+    /* MessageIdentifier */
+    ie = CALLOC(1, sizeof(NGAP_WriteReplaceWarningRequestIEs_t));
+    ogs_assert(ie);
+    ie->id = NGAP_ProtocolIE_ID_id_MessageIdentifier;
+    ie->criticality = NGAP_Criticality_reject;
+    ie->value.present = NGAP_WriteReplaceWarningRequestIEs__value_PR_MessageIdentifier;
+    ie->value.choice.MessageIdentifier.size = 2;
+    ie->value.choice.MessageIdentifier.buf = CALLOC(2, sizeof(uint8_t));
+    ogs_assert(ie->value.choice.MessageIdentifier.buf);
+    ie->value.choice.MessageIdentifier.buf[0] = (message_identifier >> 8) & 0xFF;
+    ie->value.choice.MessageIdentifier.buf[1] = message_identifier & 0xFF;
+    ASN_SEQUENCE_ADD(&WriteReplaceWarningRequest->protocolIEs, ie);
+
+    /* SerialNumber */
+    ie = CALLOC(1, sizeof(NGAP_WriteReplaceWarningRequestIEs_t));
+    ogs_assert(ie);
+    ie->id = NGAP_ProtocolIE_ID_id_SerialNumber;
+    ie->criticality = NGAP_Criticality_reject;
+    ie->value.present = NGAP_WriteReplaceWarningRequestIEs__value_PR_SerialNumber;
+    ie->value.choice.SerialNumber.size = 2;
+    ie->value.choice.SerialNumber.buf = CALLOC(2, sizeof(uint8_t));
+    ogs_assert(ie->value.choice.SerialNumber.buf);
+    ie->value.choice.SerialNumber.buf[0] = (serial_number >> 8) & 0xFF;
+    ie->value.choice.SerialNumber.buf[1] = serial_number & 0xFF;
+    ASN_SEQUENCE_ADD(&WriteReplaceWarningRequest->protocolIEs, ie);
+
+    /* RepetitionPeriod */
+    if (repetition_period > 0) {
+        ie = CALLOC(1, sizeof(NGAP_WriteReplaceWarningRequestIEs_t));
+        ogs_assert(ie);
+        ie->id = NGAP_ProtocolIE_ID_id_RepetitionPeriod;
+        ie->criticality = NGAP_Criticality_reject;
+        ie->value.present = NGAP_WriteReplaceWarningRequestIEs__value_PR_RepetitionPeriod;
+        ie->value.choice.RepetitionPeriod = repetition_period;
+        ASN_SEQUENCE_ADD(&WriteReplaceWarningRequest->protocolIEs, ie);
+    }
+
+    /* NumberOfBroadcastsRequested */
+    if (number_of_broadcasts_requested > 0) {
+        ie = CALLOC(1, sizeof(NGAP_WriteReplaceWarningRequestIEs_t));
+        ogs_assert(ie);
+        ie->id = NGAP_ProtocolIE_ID_id_NumberOfBroadcastsRequested;
+        ie->criticality = NGAP_Criticality_reject;
+        ie->value.present = NGAP_WriteReplaceWarningRequestIEs__value_PR_NumberOfBroadcastsRequested;
+        ie->value.choice.NumberOfBroadcastsRequested = number_of_broadcasts_requested;
+        ASN_SEQUENCE_ADD(&WriteReplaceWarningRequest->protocolIEs, ie);
+    }
+
+    /* WarningType */
+    if (warning_type > 0) {
+        ie = CALLOC(1, sizeof(NGAP_WriteReplaceWarningRequestIEs_t));
+        ogs_assert(ie);
+        ie->id = NGAP_ProtocolIE_ID_id_WarningType;
+        ie->criticality = NGAP_Criticality_reject;
+        ie->value.present = NGAP_WriteReplaceWarningRequestIEs__value_PR_WarningType;
+        ogs_asn_uint8_to_OCTET_STRING(warning_type, &ie->value.choice.WarningType);
+        ASN_SEQUENCE_ADD(&WriteReplaceWarningRequest->protocolIEs, ie);
+    }
+
+    /* DataCodingScheme */
+    if (data_coding_scheme > 0) {
+        ie = CALLOC(1, sizeof(NGAP_WriteReplaceWarningRequestIEs_t));
+        ogs_assert(ie);
+        ie->id = NGAP_ProtocolIE_ID_id_DataCodingScheme;
+        ie->criticality = NGAP_Criticality_reject;
+        ie->value.present = NGAP_WriteReplaceWarningRequestIEs__value_PR_DataCodingScheme;
+        ogs_asn_uint32_to_BIT_STRING(data_coding_scheme, 8, &ie->value.choice.DataCodingScheme);
+        ASN_SEQUENCE_ADD(&WriteReplaceWarningRequest->protocolIEs, ie);
+    }
+
+    /* WarningMessageContents */
+    ie = CALLOC(1, sizeof(NGAP_WriteReplaceWarningRequestIEs_t));
+    ogs_assert(ie);
+    ie->id = NGAP_ProtocolIE_ID_id_WarningMessageContents;
+    ie->criticality = NGAP_Criticality_reject;
+    ie->value.present = NGAP_WriteReplaceWarningRequestIEs__value_PR_WarningMessageContents;
+    ogs_asn_buffer_to_OCTET_STRING((void *)warning_message_contents, strlen(warning_message_contents), 
+                                   &ie->value.choice.WarningMessageContents);
+    ASN_SEQUENCE_ADD(&WriteReplaceWarningRequest->protocolIEs, ie);
+
+    /* ConcurrentWarningMessageInd */
+    if (concurrent_warning_message_ind > 0) {
+        ie = CALLOC(1, sizeof(NGAP_WriteReplaceWarningRequestIEs_t));
+        ogs_assert(ie);
+        ie->id = NGAP_ProtocolIE_ID_id_ConcurrentWarningMessageInd;
+        ie->criticality = NGAP_Criticality_reject;
+        ie->value.present = NGAP_WriteReplaceWarningRequestIEs__value_PR_ConcurrentWarningMessageInd;
+        ie->value.choice.ConcurrentWarningMessageInd = concurrent_warning_message_ind;
+        ASN_SEQUENCE_ADD(&WriteReplaceWarningRequest->protocolIEs, ie);
+    }
+
+    /* TODO: Add WarningAreaList, WarningSecurityInfo, WarningAreaCoordinates if needed */
+
+    pkbuf = ogs_ngap_encode(&pdu);
+    if (!pkbuf) {
+        ogs_error("ogs_ngap_encode() failed");
+        return NULL;
+    }
+
+    return pkbuf;
+}
+
+bool gnb_in_warning_area(amf_gnb_t *gnb, void *warning_area_list)
+{
+    /* TODO: Implement proper warning area matching logic */
+    /* For now, return true to indicate all gNBs are in the warning area */
+    /* This should be replaced with actual area matching logic based on:
+     * - TAI (Tracking Area Identity) matching
+     * - Cell ID matching
+     * - Emergency Area ID matching
+     */
+    ogs_assert(gnb);
+    
+    if (!warning_area_list) {
+        /* If no warning area list is provided, assume all areas */
+        return true;
+    }
+    
+    /* TODO: Implement actual area matching logic */
+    /* This is a placeholder implementation */
+    return true;
+}
+
+

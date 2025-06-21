@@ -79,10 +79,41 @@ void ngap_handle_handover_notification(
 void ngap_handle_ran_configuration_update(
         amf_gnb_t *gnb, ogs_ngap_message_t *message);
 
+void ngap_handle_write_replace_warning_request(
+        amf_gnb_t *gnb, ogs_ngap_message_t *message);
+void ngap_handle_write_replace_warning_response(
+        amf_gnb_t *gnb, ogs_ngap_message_t *message);
+
 void ngap_handle_ng_reset(
         amf_gnb_t *gnb, ogs_ngap_message_t *message);
 void ngap_handle_error_indication(
         amf_gnb_t *gnb, ogs_ngap_message_t *message);
+
+int ngap_broadcast_warning_to_gnb(
+        amf_gnb_t *gnb,
+        int message_identifier,
+        int serial_number,
+        const char *warning_message_contents,
+        int repetition_period,
+        int number_of_broadcasts_requested,
+        int warning_type,
+        int data_coding_scheme,
+        int concurrent_warning_message_ind);
+
+ogs_pkbuf_t *ngap_build_write_replace_warning_request(
+        int message_identifier,
+        int serial_number,
+        void *warning_area_list,
+        int repetition_period,
+        int number_of_broadcasts_requested,
+        int warning_type,
+        void *warning_security_info,
+        int data_coding_scheme,
+        const char *warning_message_contents,
+        int concurrent_warning_message_ind,
+        void *warning_area_coordinates);
+
+bool gnb_in_warning_area(amf_gnb_t *gnb, void *warning_area_list);
 
 #ifdef __cplusplus
 }

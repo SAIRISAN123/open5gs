@@ -17,6 +17,10 @@
  * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
+#include "amf-sm.h"
+// #include "amf-event.h"
+// #include "amf-timer.h"
+
 #include "sbi-path.h"
 #include "ngap-path.h"
 #include "nas-path.h"
@@ -26,6 +30,7 @@
 #include "nsmf-handler.h"
 #include "nnssf-handler.h"
 #include "nas-security.h"
+#include "npwsiws-handler.h"
 
 void amf_state_initial(ogs_fsm_t *s, amf_event_t *e)
 {
@@ -276,6 +281,43 @@ void amf_state_operational(ogs_fsm_t *s, amf_event_t *e)
                         OGS_SBI_HTTP_STATUS_BAD_REQUEST, &sbi_message,
                         "Invalid resource name",
                         sbi_message.h.resource.component[1], NULL));
+            END
+            break;
+
+        CASE(OGS_SBI_SERVICE_NAME_NPWSIWS)
+            SWITCH(sbi_message.h.resource.component[0])
+            CASE("warning-message")
+                SWITCH(sbi_message.h.method)
+                CASE(OGS_SBI_HTTP_METHOD_POST)
+                    rv = amf_npwsiws_handle_warning_message(stream, &sbi_message);
+                    if (rv != OGS_OK) {
+                        ogs_assert(true ==
+                            ogs_sbi_server_send_error(stream,
+                                OGS_SBI_HTTP_STATUS_BAD_REQUEST,
+                                &sbi_message,
+                                "Failed to handle warning message", NULL, NULL));
+                    }
+                    break;
+
+                DEFAULT
+                    ogs_error("Invalid HTTP method [%s]",
+                            sbi_message.h.method);
+                    ogs_assert(true ==
+                        ogs_sbi_server_send_error(stream,
+                            OGS_SBI_HTTP_STATUS_FORBIDDEN, &sbi_message,
+                            "Invalid HTTP method", sbi_message.h.method,
+                            NULL));
+                END
+                break;
+
+            DEFAULT
+                ogs_error("Invalid resource name [%s]",
+                        sbi_message.h.resource.component[0]);
+                ogs_assert(true ==
+                    ogs_sbi_server_send_error(stream,
+                        OGS_SBI_HTTP_STATUS_BAD_REQUEST, &sbi_message,
+                        "Invalid resource name",
+                        sbi_message.h.resource.component[0], NULL));
             END
             break;
 
@@ -781,10 +823,10 @@ void amf_state_operational(ogs_fsm_t *s, amf_event_t *e)
                     ogs_expect(r == OGS_OK);
                     ogs_assert(r != OGS_ERROR);
                 } else {
-                    r = ngap_send_error_indication2(
-                            ran_ue_find_by_id(sess->ran_ue_id),
-                            NGAP_Cause_PR_transport,
-                            NGAP_CauseTransport_transport_resource_unavailable);
+                    ran_ue_t *ran_ue = ran_ue_find_by_id(sess->ran_ue_id);
+                    amf_gnb_t *gnb = ran_ue ? amf_gnb_find_by_id(ran_ue->gnb_id) : NULL;
+                    r = ngap_send_error_indication(
+                            gnb, NULL, NULL, NGAP_Cause_PR_transport, NGAP_CauseTransport_transport_resource_unavailable);
                     ogs_expect(r == OGS_OK);
                     ogs_assert(r != OGS_ERROR);
                 }
@@ -1079,4 +1121,10 @@ void amf_state_operational(ogs_fsm_t *s, amf_event_t *e)
         ogs_error("No handler for event %s", amf_event_get_name(e));
         break;
     }
+}
+
+// Stub for PWS-IWS integration
+int amf_npwsiws_handle_warning_message(ogs_sbi_stream_t *stream, ogs_sbi_message_t *msg) {
+    // TODO: Implement actual handling
+    return 0;
 }

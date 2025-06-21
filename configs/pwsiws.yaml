@@ -1,0 +1,13 @@
+logger:
+  file: /tmp/open5gs-pwsiws.log
+
+pwsiws:
+  sbi:
+    client:
+      amf:
+        - uri: http://127.0.0.5:7777
+  sbcap:
+    client:
+      cbc:
+        - address: 127.0.0.1  # <-- Change to your CBC IP if needed
+          port: 29168 
