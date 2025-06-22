@@ -24,6 +24,7 @@
 #include "ogs-sbi.h"
 #include "ogs-sctp.h"
 #include "ogs-ngap.h"
+#include "sbcap/ogs-sbcap.h"
 
 #ifdef __cplusplus
 extern "C" {

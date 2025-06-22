@@ -20,6 +20,8 @@
 #include "ogs-sctp.h"
 
 #include "sbcap-path.h"
+#include "context.h"
+#include "sbcap-handler.h"
 
 static void lksctp_accept_handler(short when, ogs_socket_t fd, void *data);
 
@@ -112,6 +114,9 @@ void sbcap_accept_handler(ogs_sock_t *sock)
 {
     char buf[OGS_ADDRSTRLEN];
     ogs_sock_t *new = NULL;
+#if !HAVE_USRSCTP
+    ogs_poll_t *poll = NULL;
+#endif
 
     ogs_assert(sock);
 
@@ -128,6 +133,15 @@ void sbcap_accept_handler(ogs_sock_t *sock)
          
         ogs_info("SBCAP event: SCTP_ACCEPT");
 
+#if HAVE_USRSCTP
+        usrsctp_set_non_blocking((struct socket *)new, 1);
+        usrsctp_set_upcall((struct socket *)new, usrsctp_recv_handler, NULL);
+#else
+        poll = ogs_pollset_add(ogs_app()->pollset,
+                OGS_POLLIN, new->fd, sbcap_recv_upcall, new);
+        ogs_assert(poll);
+#endif
+
     } else {
         ogs_log_message(OGS_LOG_ERROR, ogs_socket_errno, "accept() failed");
     }
@@ -141,6 +155,7 @@ void sbcap_recv_handler(ogs_sock_t *sock)
     ogs_sockaddr_t from;
     ogs_sctp_info_t sinfo;
     int flags = 0;
+    pwsiws_connection_t *connection = NULL;
 
     ogs_assert(sock);
 
@@ -219,13 +234,119 @@ void sbcap_recv_handler(ogs_sock_t *sock)
         return;
     }
 
-    ogs_pkbuf_trim(pkbuf, size);
+    if (flags & MSG_EOR) {
+        ogs_pkbuf_trim(pkbuf, size);
 
-    addr = ogs_calloc(1, sizeof(ogs_sockaddr_t));
-    ogs_assert(addr);
-    memcpy(addr, &from, sizeof(ogs_sockaddr_t));
+        addr = ogs_calloc(1, sizeof(ogs_sockaddr_t));
+        ogs_assert(addr);
+        memcpy(addr, &from, sizeof(ogs_sockaddr_t));
 
-    ogs_info("SBCAP event: SCTP_DATA");
+        ogs_info("SBCAP event: SCTP_DATA");
+
+        /* Find or create connection */
+        connection = pwsiws_connection_find_by_addr(addr);
+        if (!connection) {
+            connection = pwsiws_connection_add(sock, addr);
+            if (!connection) {
+                ogs_error("Failed to create PWS-IWS connection");
+                ogs_pkbuf_free(pkbuf);
+                return;
+            }
+        }
+
+        /* Decode SBCAP message */
+        ogs_debug("Trying to decode SBCAP-PDU...");
+        ogs_log_hexdump(OGS_LOG_DEBUG, pkbuf->data, pkbuf->len);
+
+        SBCAP_SBC_AP_PDU_t *pdu = NULL;
+        asn_dec_rval_t dec_ret;
+
+        ogs_info("SBCAP message received, size: %d", size);
+        ogs_info("SBCAP message data: %p, len: %d", pkbuf->data, pkbuf->len);
+
+        dec_ret = aper_decode_complete(NULL, &asn_DEF_SBCAP_SBC_AP_PDU,
+                (void **)&pdu, pkbuf->data, pkbuf->len);
+        if (dec_ret.code != RC_OK) {
+            ogs_error("Failed to decode SBCAP-PDU: code=%d, consumed=%ld", 
+                    dec_ret.code, dec_ret.consumed);
+            ogs_pkbuf_free(pkbuf);
+            return;
+        }
+
+        ogs_info("SBCAP PDU decoded successfully");
+
+        /* Process SBCAP message */
+        if (pdu) {
+            SBCAP_SuccessfulOutcome_t *successfulOutcome = NULL;
+            SBCAP_InitiatingMessage_t *initiatingMessage = NULL;
+
+            ogs_info("SBCAP PDU present: %d", pdu->present);
+
+            switch (pdu->present) {
+            case SBCAP_SBC_AP_PDU_PR_successfulOutcome:
+                successfulOutcome = pdu->choice.successfulOutcome;
+                ogs_assert(successfulOutcome);
+
+                ogs_info("SBCAP SuccessfulOutcome procedureCode: %ld", successfulOutcome->procedureCode);
+
+                switch (successfulOutcome->procedureCode) {
+                case SBCAP_id_Write_Replace_Warning:
+                    ogs_info("Calling pwsiws_sbcap_handle_write_replace_warning_response");
+                    pwsiws_sbcap_handle_write_replace_warning_response(connection, pdu);
+                    ogs_info("Write_Replace_Warning_Response");
+                    break;
+                default:
+                    ogs_error("Not implemented(choice:%d, proc:%d)",
+                            pdu->present, (int)successfulOutcome->procedureCode);
+                    break;
+                }
+                break;
+
+            case SBCAP_SBC_AP_PDU_PR_initiatingMessage:
+                initiatingMessage = pdu->choice.initiatingMessage;
+                ogs_assert(initiatingMessage);
+
+                ogs_info("SBCAP InitiatingMessage procedureCode: %ld", initiatingMessage->procedureCode);
+
+                switch (initiatingMessage->procedureCode) {
+                case SBCAP_id_Write_Replace_Warning:
+                    ogs_info("Calling pwsiws_sbcap_handle_write_replace_warning_request");
+                    pwsiws_sbcap_handle_write_replace_warning_request(connection, pdu);
+                    ogs_info("Write_Replace_Warning_Request");
+                    break;
+
+                case SBCAP_id_Stop_Warning:
+                    ogs_info("Calling pwsiws_sbcap_handle_stop_warning_request");
+                    pwsiws_sbcap_handle_stop_warning_request(connection, pdu);
+                    ogs_info("Stop_Warning_Request");
+                    break;
+                default:
+                    ogs_error("Not implemented(choice:%d, proc:%d)",
+                            pdu->present, (int)initiatingMessage->procedureCode);
+                    break;
+                }
+                break;
+
+            default:
+                ogs_error("Not implemented(choice:%d)", pdu->present);
+                break;
+            }
+
+            ASN_STRUCT_FREE(asn_DEF_SBCAP_SBC_AP_PDU, pdu);
+        } else {
+            ogs_error("SBCAP PDU is NULL after decoding");
+        }
+
+        ogs_pkbuf_free(pkbuf);
+        return;
+    } else {
+        if (ogs_socket_errno != OGS_EAGAIN) {
+            ogs_error("ogs_sctp_recvmsg(%d) failed(%d:%s-0x%x)",
+                    size, errno, strerror(errno), flags);
+        }
+    }
+
+    ogs_pkbuf_free(pkbuf);
 }
 
 int sbcap_send(ogs_sock_t *sock,

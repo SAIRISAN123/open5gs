@@ -24,11 +24,15 @@ typedef long	 SBCAP_ProtocolIE_ID_t;
 
 #define SBCAP_ProtocolIE_ID_id_Message_Identifier	((SBCAP_ProtocolIE_ID_t)5)
 #define SBCAP_ProtocolIE_ID_id_Serial_Number	((SBCAP_ProtocolIE_ID_t)11)
-// #define SBCAP_ProtocolIE_ID_id_Warning_Type    ((SBCAP_ProtocolIE_ID_t)18)
+#define SBCAP_ProtocolIE_ID_id_Warning_Type    ((SBCAP_ProtocolIE_ID_t)18)
 #define SBCAP_ProtocolIE_ID_id_Repetition_Period	((SBCAP_ProtocolIE_ID_t)10)
 #define SBCAP_ProtocolIE_ID_id_Number_Of_Broadcast_Requested	((SBCAP_ProtocolIE_ID_t)7)
 #define SBCAP_ProtocolIE_ID_id_Data_Coding_Scheme	((SBCAP_ProtocolIE_ID_t)3)
 #define SBCAP_ProtocolIE_ID_id_Warning_Message_Content	((SBCAP_ProtocolIE_ID_t)16)
+#define SBCAP_ProtocolIE_ID_id_Warning_Security_Information	((SBCAP_ProtocolIE_ID_t)17)
+#define SBCAP_ProtocolIE_ID_id_Warning_Area_List	((SBCAP_ProtocolIE_ID_t)15)
+#define SBCAP_ProtocolIE_ID_id_Concurrent_Warning_Message_Indicator	((SBCAP_ProtocolIE_ID_t)20)
+#define SBCAP_ProtocolIE_ID_id_Send_Write_Replace_Warning_Indication	((SBCAP_ProtocolIE_ID_t)24)
 
 
 

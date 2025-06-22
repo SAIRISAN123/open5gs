@@ -18,11 +18,15 @@
 libpwsiws_sources = files('''
     context.h
     context.c
+    pwsiws-event.h
+    pwsiws-event.c
     sbi-path.h
     sbi-path.c
     ngap-path.h
     sbcap-path.h
     sbcap-path.c
+    sbcap-handler.h
+    sbcap-handler.c
     sbc-message.h
     sbc-handler.h
     sbc-handler.c
@@ -30,12 +34,16 @@ libpwsiws_sources = files('''
     init.c
 '''.split())
 
+asn1c_sbcap_inc = include_directories('../../lib/asn1c/sbcap')
+
 libpwsiws = static_library('pwsiws',
     sources : libpwsiws_sources,
     dependencies : [libsctp_dep,
                     libngap_dep,
                     libnas_5gs_dep,
-                    libsbi_dep],
+                    libsbi_dep,
+                    libasn1c_sbcap_dep],
+    include_directories : [asn1c_sbcap_inc],
     install : false)
 
 libpwsiws_dep = declare_dependency(
@@ -43,7 +51,8 @@ libpwsiws_dep = declare_dependency(
     dependencies : [libsctp_dep,
                     libngap_dep,
                     libnas_5gs_dep,
-                    libsbi_dep])
+                    libsbi_dep,
+                    libasn1c_sbcap_dep])
 
 pwsiws_sources = files('''
     app.c
@@ -53,7 +62,7 @@ pwsiws_sources = files('''
 executable('open5gs-pwsiwsd',
     sources : pwsiws_sources,
     c_args : '-DDEFAULT_CONFIG_FILENAME="@0@/pwsiws.yaml"'.format(open5gs_sysconfdir),
-    include_directories : srcinc,
+    include_directories : [srcinc, asn1c_sbcap_inc],
     dependencies : libpwsiws_dep,
     install_rpath : libdir,
     install : true) 

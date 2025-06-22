@@ -2,6 +2,9 @@
 #include "ogs-sbi.h"
 #include "ogs-app.h"
 
+OGS_POOL(pwsiws_connection_pool, pwsiws_connection_t);
+OGS_POOL(pwsiws_warning_pool, pwsiws_warning_t);
+
 int __pwsiws_log_domain;
 
 static pwsiws_context_t self;
@@ -15,6 +18,10 @@ void pwsiws_context_init(void)
     ogs_list_init(&self.pws_iws_list);
     ogs_list_init(&self.pws_iws_list6);
     ogs_list_init(&self.sbcap_list);
+
+    /* Initialize pools */
+    ogs_pool_init(&pwsiws_connection_pool, 32);
+    ogs_pool_init(&pwsiws_warning_pool, 64);
 
     self.amf_sbi = NULL;
 }
@@ -68,7 +75,35 @@ int pwsiws_context_nf_info(void)
     return OGS_OK; 
 }
 
-pwsiws_connection_t *pwsiws_connection_add(ogs_sock_t *sock, ogs_sockaddr_t *addr) { return NULL; }
+pwsiws_connection_t *pwsiws_connection_add(ogs_sock_t *sock, ogs_sockaddr_t *addr) 
+{ 
+    pwsiws_connection_t *connection = NULL;
+    char buf[OGS_ADDRSTRLEN];
+
+    ogs_assert(sock);
+    ogs_assert(addr);
+
+    ogs_pool_alloc(&pwsiws_connection_pool, &connection);
+    if (!connection) {
+        ogs_error("Failed to allocate PWS-IWS connection");
+        return NULL;
+    }
+
+    memset(connection, 0, sizeof(pwsiws_connection_t));
+
+    connection->sctp.sock = sock;
+    connection->addr = ogs_calloc(1, sizeof(ogs_sockaddr_t));
+    ogs_assert(connection->addr);
+    memcpy(connection->addr, addr, sizeof(ogs_sockaddr_t));
+
+    ogs_list_add(&self.connection_list, connection);
+
+    ogs_info("PWS-IWS connection added: [%s]:%d", 
+            OGS_ADDR(connection->addr, buf), OGS_PORT(connection->addr));
+
+    return connection;
+}
+
 void pwsiws_connection_remove(pwsiws_connection_t *connection) {}
 void pwsiws_connection_remove_all(void) {}
 pwsiws_connection_t *pwsiws_connection_find_by_addr(ogs_sockaddr_t *addr) { return NULL; }

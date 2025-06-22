@@ -44,6 +44,9 @@ libamf_sources = files('''
     namf-handler.c
     sbi-path.c
 
+    npwsiws-build.c
+    npwsiws-handler.c
+
     ngap-sctp.c
     ngap-build.c
     ngap-handler.c

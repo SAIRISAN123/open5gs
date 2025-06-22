@@ -4834,3 +4834,29 @@ void ngap_handle_pws_cancel_response(
             OGS_ADDR(gnb->sctp.addr, buf), gnb->gnb_id);
 }
 
+void ngap_handle_pws_cancel_request(
+        amf_gnb_t *gnb, ogs_ngap_message_t *message)
+{
+    char buf[OGS_ADDRSTRLEN];
+
+    NGAP_InitiatingMessage_t *initiatingMessage = NULL;
+    NGAP_PWSCancelRequest_t *PWSCancelRequest = NULL;
+
+    ogs_assert(gnb);
+    ogs_assert(gnb->sctp.sock);
+
+    ogs_assert(message);
+    initiatingMessage = message->choice.initiatingMessage;
+    ogs_assert(initiatingMessage);
+    PWSCancelRequest =
+        &initiatingMessage->value.choice.PWSCancelRequest;
+    ogs_assert(PWSCancelRequest);
+
+    ogs_debug("PWSCancelRequest");
+
+    ogs_debug("    IP[%s] GNB_ID[%d]",
+            OGS_ADDR(gnb->sctp.addr, buf), gnb->gnb_id);
+
+    /* TODO: Handle PWS Cancel Request */
+}
+

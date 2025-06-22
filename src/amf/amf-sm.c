@@ -30,6 +30,7 @@
 #include "nsmf-handler.h"
 #include "nnssf-handler.h"
 #include "nas-security.h"
+#include "npwsiws-handler.h"
 
 void amf_state_initial(ogs_fsm_t *s, amf_event_t *e)
 {
@@ -270,6 +271,37 @@ void amf_state_operational(ogs_fsm_t *s, amf_event_t *e)
 
             CASE(OGS_SBI_RESOURCE_NAME_AM_POLICY_NOTIFY)
                 ogs_assert(true == ogs_sbi_send_http_status_no_content(stream));
+                break;
+
+            CASE(OGS_SBI_SERVICE_NAME_NPWSIWS)
+                SWITCH(sbi_message.h.resource.component[0])
+                CASE(OGS_SBI_RESOURCE_NAME_WARNING_MESSAGE)
+                    SWITCH(sbi_message.h.method)
+                    CASE(OGS_SBI_HTTP_METHOD_POST)
+                        rv = amf_npwsiws_handle_warning_message(stream, &sbi_message);
+                        if (rv != OGS_OK) {
+                            ogs_error("Failed to handle warning message");
+                        }
+                        break;
+
+                    DEFAULT
+                        ogs_error("Invalid HTTP method [%s]", sbi_message.h.method);
+                        ogs_assert(true ==
+                            ogs_sbi_server_send_error(stream,
+                                OGS_SBI_HTTP_STATUS_FORBIDDEN, &sbi_message,
+                                "Invalid HTTP method", sbi_message.h.method, NULL));
+                    END
+                    break;
+
+                DEFAULT
+                    ogs_error("Invalid resource name [%s]",
+                            sbi_message.h.resource.component[0]);
+                    ogs_assert(true ==
+                        ogs_sbi_server_send_error(stream,
+                            OGS_SBI_HTTP_STATUS_BAD_REQUEST, &sbi_message,
+                            "Invalid resource name",
+                            sbi_message.h.resource.component[0], NULL));
+                END
                 break;
 
             DEFAULT

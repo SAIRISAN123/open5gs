@@ -74,7 +74,7 @@ ogs_sbi_request_t *amf_npwsiws_build_warning_message_notification(
 
     cJSON_AddStringToObject(json, "notificationType", "WARNING_MESSAGE_STATUS");
     cJSON_AddStringToObject(json, "status", "BROADCAST_COMPLETED");
-    cJSON_AddStringToObject(json, "timestamp", ogs_time_now_string());
+    cJSON_AddStringToObject(json, "timestamp", "2024-01-01T00:00:00Z");
 
     /* Build SBI request */
     request = ogs_sbi_build_request(&notification_message);
