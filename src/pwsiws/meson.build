@@ -25,6 +25,10 @@ libpwsiws_sources = files('''
     ngap-path.h
     ngap-build.h
     ngap-build.c
+    namf-build.h
+    namf-build.c
+    namf-handler.h
+    namf-handler.c
     sbcap-path.h
     sbcap-path.c
     sbcap-handler.h

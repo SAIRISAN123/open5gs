@@ -64,7 +64,7 @@ int pwsiws_sbi_client_open(void);
 void pwsiws_sbi_client_close(void);
 
 /* PWS-IWS SBI Client Callback Functions */
-int pwsiws_sbi_client_callback(ogs_sbi_response_t *response, void *data);
+int pwsiws_sbi_client_callback(int status, ogs_sbi_response_t *response, void *data);
 
 #ifdef __cplusplus
 }

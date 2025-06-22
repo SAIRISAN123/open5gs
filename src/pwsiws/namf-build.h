@@ -21,26 +21,11 @@
 #define PWSIWS_NONUEN2_BUILD_H
 
 #include "context.h"
+#include "sbi-path.h"
 
 #ifdef __cplusplus
 extern "C" {
 #endif
-
-typedef struct pwsiws_nonuen2_message_transfer_param_s {
-#define PWSIWS_NONUEN2_MESSAGE_TRANSFER_NO_STATE             0
-#define PWSIWS_WARNING_MESSAGE_BROADCAST                     1
-#define PWSIWS_WARNING_MESSAGE_STOP                          2
-#define PWSIWS_WARNING_MESSAGE_UPDATE                        3
-#define PWSIWS_WARNING_MESSAGE_CANCEL                        4
-#define PWSIWS_WARNING_MESSAGE_RETRANSMISSION                5
-#define PWSIWS_WARNING_MESSAGE_ERROR                         6
-    int state;
-
-    ogs_pkbuf_t *n2smbuf;
-
-    bool nonuen2_failure_txf_notif_uri;
-    bool skip_ind;
-} pwsiws_nonuen2_message_transfer_param_t;
 
 ogs_sbi_request_t *pwsiws_nonuen2_comm_build_nonuen2_message_transfer(
         pwsiws_warning_t *warning, pwsiws_nonuen2_message_transfer_param_t *param);

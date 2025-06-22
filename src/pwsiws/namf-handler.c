@@ -20,6 +20,7 @@
 #include "sbi-path.h"
 #include "ngap-path.h"
 #include "namf-handler.h"
+#include "ngap-build.h"
 
 bool pwsiws_nonuen2_comm_handle_nonuen2_message_transfer(
         pwsiws_warning_t *warning, int state, ogs_sbi_message_t *recvmsg)
