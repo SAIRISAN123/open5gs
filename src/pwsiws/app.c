@@ -21,6 +21,7 @@
 #include "ogs-app.h"
 #include "init.h"
 #include "context.h"
+#include "ogs-ngap.h"
 
 int app_initialize(const char *const argv[])
 {
@@ -28,6 +29,10 @@ int app_initialize(const char *const argv[])
 
     /* Install log domain first */
     ogs_log_install_domain(&__pwsiws_log_domain, "pwsiws", ogs_core()->log.level);
+
+    // Register NGAP log domain
+    if (!ogs_log_find_domain("ngap"))
+        ogs_log_install_domain(&__ogs_ngap_domain, "ngap", ogs_core()->log.level);
 
     ogs_sctp_init(ogs_app()->usrsctp.udp_port);
     rv = pwsiws_initialize();

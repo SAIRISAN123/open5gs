@@ -20,6 +20,7 @@
 #include "sbcap-handler.h"
 #include "sbcap-path.h"
 #include "sbi-path.h"
+#include "ngap-build.h"
 
 void pwsiws_sbcap_handle_write_replace_warning_response(
         pwsiws_connection_t *connection, ogs_sbcap_message_t *message)
@@ -38,6 +39,9 @@ void pwsiws_sbcap_handle_write_replace_warning_request(
 {
     char buf[OGS_ADDRSTRLEN];
     int i;
+    pwsiws_warning_t *warning = NULL;
+    uint16_t message_id = 0;
+    uint16_t serial_number_i = 0;
 
     SBCAP_InitiatingMessage_t *initiatingMessage = NULL;
     SBCAP_Write_Replace_Warning_Request_t *SbcapWriteReplaceWarningRequest = NULL;
@@ -73,15 +77,12 @@ void pwsiws_sbcap_handle_write_replace_warning_request(
         switch(ie->id) {
             case SBCAP_ProtocolIE_ID_id_Message_Identifier:
                 message_identifier = &ie->value.choice.Message_Identifier;
-                int message = 0;
-                memcpy(&message, message_identifier->buf, sizeof(uint16_t));
-                ogs_debug("message_identifier: %ld", message_identifier->size);
-                ogs_info("message_identifier: %d", message);
+                memcpy(&message_id, message_identifier->buf, sizeof(uint16_t));
+                ogs_info("message_identifier: %d", message_id);
                 break;
 
             case SBCAP_ProtocolIE_ID_id_Serial_Number:
                 serial_number = &ie->value.choice.Serial_Number;
-                uint16_t serial_number_i = 0;
                 memcpy(&serial_number_i, serial_number->buf, sizeof(uint16_t));
                 ogs_info("serial_number: %d", serial_number_i);
                 break;
@@ -142,6 +143,50 @@ void pwsiws_sbcap_handle_write_replace_warning_request(
                 break;
         }
     }
+
+    warning = pwsiws_warning_add(connection);
+    if (!warning) {
+        ogs_error("Failed to create a new warning context");
+        return;
+    }
+
+    warning->message_id = message_id;
+    warning->warning_data.serial_number = serial_number_i;
+
+    if (repetition_period)
+        warning->warning_data.repetition_period = *repetition_period;
+    if (broadcast_requested)
+        warning->warning_data.number_of_broadcasts_requested = *broadcast_requested;
+    if (data_coding_scheme) {
+        uint8_t dcs = 0;
+        memcpy(&dcs, data_coding_scheme->buf, sizeof(uint8_t));
+        warning->warning_data.data_coding_scheme = dcs;
+    }
+    if (warning_message_content && warning_message_content->size > 0) {
+        memcpy(warning->warning_data.warning_message_content,
+                warning_message_content->buf, warning_message_content->size);
+        warning->warning_data.message_content_length = warning_message_content->size;
+    }
+
+    pwsiws_nonuen2_message_transfer_param_t param;
+    memset(&param, 0, sizeof(param));
+    param.state = PWSIWS_WARNING_MESSAGE_BROADCAST;
+    param.nonuen2_failure_txf_notif_uri = true;
+
+    param.n2smbuf = ngap_build_warning_message_broadcast_request_transfer(warning);
+    if (!param.n2smbuf) {
+        ogs_error("Failed to build NGAP warning message broadcast request transfer");
+        pwsiws_warning_remove(warning);
+        return;
+    }
+
+    if (pwsiws_nonuen2_comm_send_nonuen2_message_transfer(warning, &param) != OGS_OK) {
+        ogs_error("Failed to send Non-UE N2 message to AMF");
+        pwsiws_warning_remove(warning);
+        return;
+    }
+
+    ogs_info("Forwarded Write-Replace-Warning-Request to AMF");
 
     ogs_info("Write_Replace_Warning_Request processed from [%s]",
             OGS_ADDR(connection->addr, buf));

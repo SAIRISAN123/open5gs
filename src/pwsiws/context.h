@@ -78,7 +78,7 @@ typedef struct pwsiws_warning_s {
     /* Warning message content */
     struct {
         uint8_t     message_type;       /* Warning message type */
-        uint8_t     serial_number;      /* Serial number */
+        uint16_t    serial_number;      /* Serial number */
         uint8_t     message_identifier[50]; /* Message identifier */
         uint8_t     data_coding_scheme; /* Data coding scheme */
         uint8_t     warning_security_information[50]; /* Security info */

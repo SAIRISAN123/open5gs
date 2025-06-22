@@ -19,6 +19,7 @@
 
 #ifndef NGAP_PATH_H
 #define NGAP_PATH_H
+
 #include "ogs-core.h"
 #include "context.h"
 #include "sbc-message.h"
@@ -27,28 +28,15 @@
 
 static inline ogs_pkbuf_t *ngap_build_write_replace_warning_request(sbc_pws_data_t *sbc_pws) { return NULL; }
 static inline ogs_pkbuf_t *ngap_build_kill_request(sbc_pws_data_t *sbc_pws) { return NULL; }
-static inline int pwsiws_ngap_send_to_amf(ogs_pkbuf_t *buf)
-{
-    if (!pwsiws_self()->amf_sbi) {
-        ogs_error("AMF SBI client not configured");
-        ogs_pkbuf_free(buf);
-        return OGS_ERROR;
-    }
-
-    /* TODO: Implement SBI request to AMF */
-    ogs_info("Sending NGAP message to AMF (stub)");
-    ogs_pkbuf_free(buf);
-    return OGS_OK;
-}
 
 #ifdef __cplusplus
 extern "C" {
 #endif
 
 /* PWS-IWS NGAP-AMF Message Functions */
-int pwsiws_ngap_send_write_replace_warning_request(
-        sbc_pws_data_t *sbc_pws);
+int pwsiws_ngap_send_write_replace_warning_request(sbc_pws_data_t *sbc_pws);
 int pwsiws_ngap_send_kill_request(sbc_pws_data_t *sbc_pws);
+int pwsiws_ngap_send_to_amf(ogs_pkbuf_t *buf);
 
 #ifdef __cplusplus
 }

@@ -3,6 +3,9 @@ logger:
 
 pwsiws:
   sbi:
+    server:
+      - address: 127.0.0.199
+        port: 7778
     client:
       amf:
         - uri: http://127.0.0.5:7777
