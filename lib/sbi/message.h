@@ -418,6 +418,17 @@ extern "C" {
 #define OGS_SBI_CALLBACK_NAMF_COMMUNICATION_ONN1N2TRANSFERFAILURE \
     "Namf_Communication_onN1N2TransferFailure"
 
+#define OGS_SBI_SERVICE_NAME_NUDM_UECM                  "nudm-uecm"
+#define OGS_SBI_SERVICE_NAME_NUDM_SDM                   "nudm-sdm"
+#define OGS_SBI_SERVICE_NAME_NUDM_UEAU                  "nudm-ueau"
+#define OGS_SBI_SERVICE_NAME_NUDM_MT                    "nudm-mt"
+#define OGS_SBI_SERVICE_NAME_NUDM_PP                    "nudm-pp"
+#define OGS_SBI_SERVICE_NAME_NPWS_CALLBACK              "npws-callback"
+
+/* NRF NFManagement Service */
+#define OGS_SBI_SERVICE_NAME_NNRF_MGMT                  "nnrf-mgmt"
+/* NRF NFDiscovery Service */
+
 typedef struct ogs_sbi_header_s {
     char *method;
     char *uri;

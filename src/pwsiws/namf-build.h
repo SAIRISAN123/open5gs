@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2019-2025 by Sukchan Lee <acetcom@gmail.com>
+ * Copyright (C) 2019,2020 by Sukchan Lee <acetcom@gmail.com>
  *
  * This file is part of Open5GS.
  *
@@ -17,29 +17,15 @@
  * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
-#ifndef PWSIWS_SBI_PATH_H
-#define PWSIWS_SBI_PATH_H
+#ifndef PWSIWS_NONUEN2_BUILD_H
+#define PWSIWS_NONUEN2_BUILD_H
 
-#include "ogs-sbi.h"
 #include "context.h"
 
 #ifdef __cplusplus
 extern "C" {
 #endif
 
-/* PWS-IWS SBI Server Functions */
-int pwsiws_sbi_open(void);
-void pwsiws_sbi_close(void);
-
-/* PWS-IWS SBI Server Callback Functions */
-int pwsiws_sbi_server_callback(ogs_sbi_request_t *request, void *data);
-
-/* PWS-IWS SBI Path Functions */
-int pwsiws_sbi_discover_and_send(ogs_sbi_service_type_e service_type,
-        ogs_sbi_request_t *(*build)(pwsiws_warning_t *warning, void *data),
-        pwsiws_warning_t *warning, ogs_sbi_xact_t *xact, void *data);
-
-/* PWS-IWS NONUEN2 Message Transfer Functions */
 typedef struct pwsiws_nonuen2_message_transfer_param_s {
 #define PWSIWS_NONUEN2_MESSAGE_TRANSFER_NO_STATE             0
 #define PWSIWS_WARNING_MESSAGE_BROADCAST                     1
@@ -56,18 +42,15 @@ typedef struct pwsiws_nonuen2_message_transfer_param_s {
     bool skip_ind;
 } pwsiws_nonuen2_message_transfer_param_t;
 
-int pwsiws_nonuen2_comm_send_nonuen2_message_transfer(
+ogs_sbi_request_t *pwsiws_nonuen2_comm_build_nonuen2_message_transfer(
         pwsiws_warning_t *warning, pwsiws_nonuen2_message_transfer_param_t *param);
 
-/* PWS-IWS SBI Client Functions */
-int pwsiws_sbi_client_open(void);
-void pwsiws_sbi_client_close(void);
+ogs_sbi_request_t *pwsiws_nonuen2_callback_build_warning_status(
+        pwsiws_warning_t *warning, void *data);
 
-/* PWS-IWS SBI Client Callback Functions */
-int pwsiws_sbi_client_callback(ogs_sbi_response_t *response, void *data);
 
 #ifdef __cplusplus
 }
 #endif
 
-#endif /* PWSIWS_SBI_PATH_H */ 
+#endif /* PWSIWS_NONUEN2_BUILD_H */

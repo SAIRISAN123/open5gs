@@ -102,6 +102,10 @@ typedef struct pwsiws_warning_s {
     /* Related context */
     ogs_pool_id_t   connection_id;
 
+    /* SBI callback URIs */
+    char            *warning_status_uri;
+    char            *paging_nonuen2message_location;
+
 } pwsiws_warning_t;
 
 /* PWS-IWS Context Structure */
@@ -160,6 +164,10 @@ void pwsiws_warning_remove(pwsiws_warning_t *warning);
 void pwsiws_warning_remove_all(void);
 pwsiws_warning_t *pwsiws_warning_find_by_id(ogs_pool_id_t id);
 pwsiws_warning_t *pwsiws_warning_find_by_warning_id(uint32_t warning_id);
+pwsiws_warning_t *pwsiws_warning_find_by_paging_nonuen2message_location(char *location);
+
+/* Warning Message SBI Functions */
+void pwsiws_warning_set_paging_nonuen2message_location(pwsiws_warning_t *warning, char *location);
 
 /* Utility Functions */
 uint32_t pwsiws_warning_id_alloc(void);
