@@ -23,6 +23,7 @@
 #include "nas-path.h"
 #include "ngap-path.h"
 #include "sbi-path.h"
+#include "sbc-message.h"
 
 int amf_namf_comm_handle_n1_n2_message_transfer(
         ogs_sbi_stream_t *stream, ogs_sbi_message_t *recvmsg)
@@ -1947,6 +1948,131 @@ int amf_namf_comm_handle_registration_status_update_response(
         ogs_sbi_message_t *recvmsg, amf_ue_t *amf_ue) {
 
     /* Nothing to do */
+
+    return OGS_OK;
+}
+
+int amf_namf_comm_handle_non_ue_n2_message_transfer(
+        ogs_sbi_stream_t *stream, ogs_sbi_message_t *recvmsg)
+{
+    int status, r;
+    ogs_sbi_message_t sendmsg;
+    ogs_sbi_response_t *response = NULL;
+
+    OpenAPI_n2_information_transfer_req_data_t *N2InformationTransferReqData;
+    OpenAPI_n2_information_transfer_rsp_data_t N2InformationTransferRspData;
+
+    ogs_pkbuf_t *n2buf = NULL;
+
+    OpenAPI_n2_info_container_t *n2InfoContainer = NULL;
+    OpenAPI_pws_information_t *pwsInfo = NULL;
+    OpenAPI_n2_info_content_t *n2InfoContent = NULL;
+    OpenAPI_ref_to_binary_data_t *ngapData = NULL;
+
+    sbc_pws_data_t *sbc_pws = NULL;
+
+    ogs_assert(stream);
+    ogs_assert(recvmsg);
+
+    N2InformationTransferReqData = recvmsg->N2InformationTransferReqData;
+    if (!N2InformationTransferReqData) {
+        ogs_error("No N2InformationTransferReqData");
+        return OGS_ERROR;
+    }
+
+    n2InfoContainer = N2InformationTransferReqData->n2_information;
+    if (!n2InfoContainer) {
+        ogs_error("No n2InfoContainer");
+        return OGS_ERROR;
+    }
+
+    /* Handle PWS (Public Warning System) information */
+    pwsInfo = n2InfoContainer->pws_info;
+    if (pwsInfo) {
+        n2InfoContent = pwsInfo->pws_container;
+        if (!n2InfoContent) {
+            ogs_error("No n2InfoContent in PWS");
+            return OGS_ERROR;
+        }
+
+        ngapData = n2InfoContent->ngap_data;
+        if (!ngapData || !ngapData->content_id) {
+            ogs_error("No ngapData in PWS");
+            return OGS_ERROR;
+        }
+
+        n2buf = ogs_sbi_find_part_by_content_id(
+                recvmsg, ngapData->content_id);
+        if (!n2buf) {
+            ogs_error("No N2 PWS Content");
+            return OGS_ERROR;
+        }
+
+        /*
+         * NOTE : The pkbuf created in the SBI message will be removed
+         *        from ogs_sbi_message_free(), so it must be copied.
+         */
+        n2buf = ogs_pkbuf_copy(n2buf);
+        ogs_assert(n2buf);
+
+        /* Create sbc_pws_data structure from PWS information */
+        sbc_pws = ogs_calloc(1, sizeof(sbc_pws_data_t));
+        if (!sbc_pws) {
+            ogs_error("Failed to allocate sbc_pws_data");
+            if (n2buf) ogs_pkbuf_free(n2buf);
+            return OGS_ERROR;
+        }
+
+        sbc_pws->message_id = pwsInfo->message_identifier;
+        sbc_pws->serial_number = pwsInfo->serial_number;
+        
+        /* Set default values for PWS broadcast */
+        sbc_pws->repetition_period = 0;  /* No repetition */
+        sbc_pws->number_of_broadcast = 1; /* Single broadcast */
+        sbc_pws->data_coding_scheme = 0;  /* Default coding scheme */
+        
+        /* Copy PWS message content from N2 buffer */
+        if (n2buf->len > 0 && n2buf->len <= sizeof(sbc_pws->message_contents)) {
+            sbc_pws->message_length = n2buf->len;
+            memcpy(sbc_pws->message_contents, n2buf->data, n2buf->len);
+        } else {
+            ogs_error("Invalid PWS message length: %d", n2buf->len);
+            ogs_free(sbc_pws);
+            if (n2buf) ogs_pkbuf_free(n2buf);
+            return OGS_ERROR;
+        }
+
+        /* Send PWS message to all gNBs using existing infrastructure */
+        r = ngap_send_write_replace_warning_request(sbc_pws);
+        if (r != OGS_OK) {
+            ogs_error("Failed to send PWS warning request");
+        }
+
+        /* Clean up */
+        ogs_free(sbc_pws);
+        if (n2buf) ogs_pkbuf_free(n2buf);
+    }
+
+    /* TODO: Handle other N2 information types like:
+     * - SM Info (Session Management)
+     * - RAN Info (Radio Access Network)
+     * - NRPPA Info (NR Positioning Protocol A)
+     * - V2X Info (Vehicle-to-Everything)
+     * - ProSe Info (Proximity Services)
+     */
+
+    memset(&sendmsg, 0, sizeof(sendmsg));
+
+    status = OGS_SBI_HTTP_STATUS_OK;
+
+    memset(&N2InformationTransferRspData, 0, sizeof(N2InformationTransferRspData));
+    N2InformationTransferRspData.result = OpenAPI_n2_information_transfer_result_N2_INFO_TRANSFER_INITIATED;
+
+    sendmsg.N2InformationTransferRspData = &N2InformationTransferRspData;
+
+    response = ogs_sbi_build_response(&sendmsg, status);
+    ogs_assert(response);
+    ogs_assert(true == ogs_sbi_server_send_response(stream, response));
 
     return OGS_OK;
 }
