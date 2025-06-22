@@ -244,6 +244,7 @@ void amf_state_operational(ogs_fsm_t *s, amf_event_t *e)
 
             CASE(OGS_SBI_RESOURCE_NAME_NON_UE_N2_MESSAGES) /* New case for PWS */
                 SWITCH(sbi_message.h.method)
+                ogs_info("amf is getting................");
                 CASE(OGS_SBI_HTTP_METHOD_POST)
                     rv = amf_namf_comm_handle_non_ue_n2_message_transfer(
                     stream, &sbi_message);
