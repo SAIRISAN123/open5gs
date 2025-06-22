@@ -164,9 +164,31 @@ void sbcap_recv_handler(ogs_sock_t *sock)
     ogs_pkbuf_put(pkbuf, OGS_MAX_SDU_LEN);
     size = ogs_sctp_recvmsg(
             sock, pkbuf->data, pkbuf->len, &from, &sinfo, &flags);
+    if (size == 0) {
+        ogs_info("SCTP connection closed by peer");
+
+        // Find and remove the connection object, if it exists
+        addr = ogs_calloc(1, sizeof(ogs_sockaddr_t));
+        ogs_assert(addr);
+        memcpy(addr, &from, sizeof(ogs_sockaddr_t));
+        connection = pwsiws_connection_find_by_addr(addr);
+        if (connection) {
+            pwsiws_connection_remove(connection);
+        }
+        ogs_free(addr);
+
+        // Remove from pollset if needed (depends on your poll implementation)
+        // ogs_pollset_remove(ogs_app()->pollset, sock->fd);
+
+        // Close the socket
+        ogs_sctp_destroy(sock);
+
+        ogs_pkbuf_free(pkbuf);
+        return;
+    }
     if (size < 0 || size >= OGS_MAX_SDU_LEN) {
-        ogs_error("ogs_sctp_recvmsg(%d) failed(%d:%s)",
-                size, errno, strerror(errno));
+        ogs_error("ogs_sctp_recvmsg(%d) failed(%d:%s-0x%x)",
+                size, errno, strerror(errno), flags);
         ogs_pkbuf_free(pkbuf);
         return;
     }
