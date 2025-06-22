@@ -1,5 +1,6 @@
 {
     "files.associations": {
-        "message.h": "c"
+        "message.h": "c",
+        "nsmf-handler.h": "c"
     }
 }
