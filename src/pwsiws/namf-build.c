@@ -48,6 +48,9 @@ ogs_sbi_request_t *pwsiws_nonuen2_comm_build_nonuen2_message_transfer(
     memset(&n2InfoContent, 0, sizeof(n2InfoContent));
     memset(&ngapData, 0, sizeof(ngapData));
 
+    // Ensure pws_container is always NULL
+    pwsInfo.pws_container = NULL;
+
     // Fill in the NGAP binary data
     ngapData.content_id = (char *)OGS_SBI_CONTENT_NGAP_SM_ID;
     // Optionally set other fields if needed
@@ -57,12 +60,12 @@ ogs_sbi_request_t *pwsiws_nonuen2_comm_build_nonuen2_message_transfer(
     // Optionally set is_ngap_message_type, ngap_message_type, ngap_ie_type if needed
 
     // Fill in the PWS information
-    pwsInfo.pws_container = &n2InfoContent;
     pwsInfo.message_identifier = warning->message_id;
     pwsInfo.serial_number = warning->warning_data.serial_number;
-    pwsInfo.data_coding_scheme= warning->warning_data.data_coding_scheme;
-    pwsInfo.repetition_period = warning ->warning_data.repetition_period;
-    pwsInfo.message_length = warning -> warning_data.message_length;
+    pwsInfo.data_coding_scheme = warning->warning_data.data_coding_scheme;
+    pwsInfo.repetition_period = warning->warning_data.repetition_period;
+    pwsInfo.number_of_broadcast = warning->warning_data.number_of_broadcast;
+    pwsInfo.message_length = warning->warning_data.message_length;
     memcpy(pwsInfo.message_contents, warning->warning_data.message_contents, warning->warning_data.message_length);
     
     // Additional PWS parameters (repetition_period, data_coding_scheme, etc.) are not present in OpenAPI_pws_information_t
@@ -97,27 +100,7 @@ ogs_sbi_request_t *pwsiws_nonuen2_comm_build_nonuen2_message_transfer(
     message.h.resource.component[0] = (char *)OGS_SBI_RESOURCE_NAME_NON_UE_N2_MESSAGES;
     message.N2InformationTransferReqData = &N2InformationTransferReqData;
 
-    // added for debug
-    if (!message.N2InformationTransferReqData) {
-        ogs_error("N2InformationTransferReqData is NULL before building request");
-    } else {
-        ogs_info("N2InformationTransferReqData populated: n2_information=%p", message.N2InformationTransferReqData->n2_information);
-        // Print the would-be JSON
-        char *dbg_json = cJSON_PrintUnformatted(OpenAPI_n2_information_transfer_req_data_convertToJSON(&N2InformationTransferReqData));
-        if (dbg_json) {
-            ogs_info("DEBUG: Would send N2InformationTransferReqData JSON: %s", dbg_json);
-            cJSON_free(dbg_json);
-        }
-    }
-
     request = ogs_sbi_build_request(&message);
-
-    // Print num_of_part after building the request
-    ogs_info("DEBUG: request->http.num_of_part = %d", request->http.num_of_part);
-    // Print the actual HTTP body if present
-    ogs_info("DEBUG: request->http.content = %p, length = %zu", request->http.content, request->http.content_length);
-    if (request->http.content && request->http.content_length)
-        ogs_info("DEBUG: Actual HTTP body: %.*s", (int)request->http.content_length, request->http.content);
 
     // Set SBI header info (redundant, but for clarity)
     request->h.method = (char *)OGS_SBI_HTTP_METHOD_POST;
@@ -176,7 +159,7 @@ ogs_sbi_request_t *pwsiws_nonuen2_callback_build_warning_status(
     pwsInfo.send_ran_response = 0; // Set as needed
     pwsInfo.omc_id = NULL; // Set as needed
     pwsInfo.nf_id = NULL; // Set as needed
-    pwsInfo.pws_container = NULL; // Not needed for status notification
+    pwsInfo.pws_container = NULL;
 
     // Build the SBI message
     request = ogs_sbi_request_new();

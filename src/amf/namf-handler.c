@@ -1962,12 +1962,9 @@ int amf_namf_comm_handle_non_ue_n2_message_transfer(
     OpenAPI_n2_information_transfer_req_data_t *N2InformationTransferReqData;
     OpenAPI_n2_information_transfer_rsp_data_t N2InformationTransferRspData;
 
-    ogs_pkbuf_t *n2buf = NULL;
-
     OpenAPI_n2_info_container_t *n2InfoContainer = NULL;
     OpenAPI_pws_information_t *pwsInfo = NULL;
-    OpenAPI_n2_info_content_t *n2InfoContent = NULL;
-    OpenAPI_ref_to_binary_data_t *ngapData = NULL;
+    // OpenAPI_n2_info_content_t *n2InfoContent = NULL; // removed unused variable
 
     sbc_pws_data_t *sbc_pws = NULL;
 
@@ -1989,68 +1986,32 @@ int amf_namf_comm_handle_non_ue_n2_message_transfer(
     /* Handle PWS (Public Warning System) information */
     pwsInfo = n2InfoContainer->pws_info;
     if (pwsInfo) {
-        n2InfoContent = pwsInfo->pws_container;
-        if (!n2InfoContent) {
-            ogs_error("No n2InfoContent in PWS");
-            return OGS_ERROR;
-        }
+        // Accept PWS message directly from pwsInfo fields (no ngapData required)
+        if (pwsInfo->message_length > 0) {
+            sbc_pws = ogs_calloc(1, sizeof(sbc_pws_data_t));
+            if (!sbc_pws) {
+                ogs_error("Failed to allocate sbc_pws_data");
+                return OGS_ERROR;
+            }
 
-        ngapData = n2InfoContent->ngap_data;
-        if (!ngapData || !ngapData->content_id) {
-            ogs_error("No ngapData in PWS");
-            return OGS_ERROR;
-        }
+            sbc_pws->message_id = pwsInfo->message_identifier;
+            sbc_pws->serial_number = pwsInfo->serial_number;
+            sbc_pws->repetition_period = pwsInfo->repetition_period;
+            sbc_pws->number_of_broadcast = pwsInfo->number_of_broadcast;
+            sbc_pws->data_coding_scheme = pwsInfo->data_coding_scheme;
+            sbc_pws->message_length = pwsInfo->message_length;
+            memcpy(sbc_pws->message_contents, pwsInfo->message_contents, pwsInfo->message_length);
 
-        n2buf = ogs_sbi_find_part_by_content_id(
-                recvmsg, ngapData->content_id);
-        if (!n2buf) {
-            ogs_error("No N2 PWS Content");
-            return OGS_ERROR;
-        }
-
-        /*
-         * NOTE : The pkbuf created in the SBI message will be removed
-         *        from ogs_sbi_message_free(), so it must be copied.
-         */
-        n2buf = ogs_pkbuf_copy(n2buf);
-        ogs_assert(n2buf);
-
-        /* Create sbc_pws_data structure from PWS information */
-        sbc_pws = ogs_calloc(1, sizeof(sbc_pws_data_t));
-        if (!sbc_pws) {
-            ogs_error("Failed to allocate sbc_pws_data");
-            if (n2buf) ogs_pkbuf_free(n2buf);
-            return OGS_ERROR;
-        }
-
-        sbc_pws->message_id = pwsInfo->message_identifier;
-        sbc_pws->serial_number = pwsInfo->serial_number;
-        
-        /* Set default values for PWS broadcast */
-        sbc_pws->repetition_period = 0;  /* No repetition */
-        sbc_pws->number_of_broadcast = 1; /* Single broadcast */
-        sbc_pws->data_coding_scheme = 0;  /* Default coding scheme */
-        
-        /* Copy PWS message content from N2 buffer */
-        if (n2buf->len > 0 && n2buf->len <= sizeof(sbc_pws->message_contents)) {
-            sbc_pws->message_length = n2buf->len;
-            memcpy(sbc_pws->message_contents, n2buf->data, n2buf->len);
-        } else {
-            ogs_error("Invalid PWS message length: %d", n2buf->len);
+            // Send PWS message to all gNBs
+            r = ngap_send_write_replace_warning_request(sbc_pws);
+            if (r != OGS_OK) {
+                ogs_error("Failed to send PWS warning request");
+            }
             ogs_free(sbc_pws);
-            if (n2buf) ogs_pkbuf_free(n2buf);
+        } else {
+            ogs_error("No PWS message content in pwsInfo");
             return OGS_ERROR;
         }
-
-        /* Send PWS message to all gNBs using existing infrastructure */
-        r = ngap_send_write_replace_warning_request(sbc_pws);
-        if (r != OGS_OK) {
-            ogs_error("Failed to send PWS warning request");
-        }
-
-        /* Clean up */
-        ogs_free(sbc_pws);
-        if (n2buf) ogs_pkbuf_free(n2buf);
     }
 
     /* TODO: Handle other N2 information types like:
