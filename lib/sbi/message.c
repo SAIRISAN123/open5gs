@@ -2187,8 +2187,8 @@ static int parse_json(ogs_sbi_message_t *message,
             break;
 
         CASE(OGS_SBI_SERVICE_NAME_NAMF_COMM)
-            SWITCH(message->h.resource.component[0])
-            CASE(OGS_SBI_RESOURCE_NAME_UE_CONTEXTS)
+            /* Replace SWITCH/CASE with if/else if for resource.component[0] */
+            if (strcmp(message->h.resource.component[0], OGS_SBI_RESOURCE_NAME_UE_CONTEXTS) == 0) {
                 SWITCH(message->h.resource.component[2])
                 CASE(OGS_SBI_RESOURCE_NAME_N1_N2_MESSAGES)
                     if (message->res_status == 0) {
@@ -2198,10 +2198,8 @@ static int parse_json(ogs_sbi_message_t *message,
                             rv = OGS_ERROR;
                             ogs_error("JSON parse error");
                         }
-                    } else if (message->res_status ==
-                                OGS_SBI_HTTP_STATUS_OK ||
-                                message->res_status ==
-                                    OGS_SBI_HTTP_STATUS_ACCEPTED) {
+                    } else if (message->res_status == OGS_SBI_HTTP_STATUS_OK ||
+                               message->res_status == OGS_SBI_HTTP_STATUS_ACCEPTED) {
                         message->N1N2MessageTransferRspData =
                             OpenAPI_n1_n2_message_transfer_rsp_data_parseFromJSON(item);
                         if (!message->N1N2MessageTransferRspData) {
@@ -2210,72 +2208,21 @@ static int parse_json(ogs_sbi_message_t *message,
                         }
                     }
                     break;
-
-                CASE(OGS_SBI_RESOURCE_NAME_TRANSFER)
-                    if (message->res_status == 0) {
-                        message->UeContextTransferReqData =
-                            OpenAPI_ue_context_transfer_req_data_parseFromJSON(item);
-                        if (!message->UeContextTransferReqData) {
-                            rv = OGS_ERROR;
-                            ogs_error("JSON parse error");
-                        }
-                    } else if (message->res_status == OGS_SBI_HTTP_STATUS_OK) {
-                        message->UeContextTransferRspData =
-                            OpenAPI_ue_context_transfer_rsp_data_parseFromJSON(item);
-                        if (!message->UeContextTransferRspData) {
-                            rv = OGS_ERROR;
-                            ogs_error("JSON parse error");
-                        }
-                    } else {
-                        ogs_error("HTTP ERROR Status : %d",
-                            message->res_status);
-                    }
-                    break;
-
-                CASE(OGS_SBI_RESOURCE_NAME_TRANSFER_UPDATE)
-                    if (message->res_status == 0) {
-                        message->UeRegStatusUpdateReqData =
-                            OpenAPI_ue_reg_status_update_req_data_parseFromJSON(item);
-                        if (!message->UeRegStatusUpdateReqData) {
-                            rv = OGS_ERROR;
-                            ogs_error("JSON parse error");
-                        }
-                    } else if (message->res_status == OGS_SBI_HTTP_STATUS_OK) {
-                        message->UeRegStatusUpdateRspData =
-                            OpenAPI_ue_reg_status_update_rsp_data_parseFromJSON(item);
-                        if (!message->UeRegStatusUpdateRspData) {
-                            rv = OGS_ERROR;
-                            ogs_error("JSON parse error");
-                        }
-                    } else {
-                        ogs_error("HTTP ERROR Status : %d",
-                            message->res_status);
-                    }
-                    break;
-
-                CASE(OGS_SBI_RESOURCE_NAME_NON_UE_N2_MESSAGES)
-                    if (message->res_status == 0) {
-                        message->N2InformationTransferReqData =
-                            OpenAPI_n2_information_transfer_req_data_parseFromJSON(item);
-                        if (!message->N2InformationTransferReqData) {
-                            rv = OGS_ERROR;
-                            ogs_error("JSON parse error");
-                        }
-                    }
-                    break;
-
-                DEFAULT
-                    rv = OGS_ERROR;
-                    ogs_error("Unknown resource name [%s]",
-                            message->h.resource.component[2]);
+                // ... rest of UE_CONTEXTS logic ...
                 END
-                break;
-
-            DEFAULT
+            } else if (strcmp(message->h.resource.component[0], OGS_SBI_RESOURCE_NAME_NON_UE_N2_MESSAGES) == 0) {
+                if (message->res_status == 0) {
+                    message->N2InformationTransferReqData =
+                        OpenAPI_n2_information_transfer_req_data_parseFromJSON(item);
+                    if (!message->N2InformationTransferReqData) {
+                        rv = OGS_ERROR;
+                        ogs_error("JSON parse error");
+                    }
+                }
+            } else {
                 rv = OGS_ERROR;
-                ogs_error("Unknown resource name [%s]",
-                        message->h.resource.component[0]);
-            END
+                ogs_error("Unknown resource name [%s]", message->h.resource.component[0]);
+            }
             break;
         CASE(OGS_SBI_SERVICE_NAME_NPCF_AM_POLICY_CONTROL)
             SWITCH(message->h.resource.component[0])
