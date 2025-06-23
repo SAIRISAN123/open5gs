@@ -20,20 +20,73 @@
 #include "namf-build.h"
 #include "ngap-build.h"
 
+
 ogs_sbi_request_t *pwsiws_nonuen2_comm_build_nonuen2_message_transfer(
         pwsiws_warning_t *warning, pwsiws_nonuen2_message_transfer_param_t *param)
 {
+    ogs_sbi_message_t message;
     ogs_sbi_request_t *request = NULL;
+    
     ogs_sbi_server_t *server = NULL;
     ogs_sbi_header_t header;
+    
+    OpenAPI_n2_information_transfer_req_data_t N2InformationTransferReqData;
+    OpenAPI_n2_info_container_t n2InfoContainer;
+    OpenAPI_pws_information_t pwsInfo;
+    OpenAPI_n2_info_content_t n2InfoContent;
+    OpenAPI_ref_to_binary_data_t ngapData;
 
     ogs_assert(warning);
     ogs_assert(param);
     ogs_assert(param->state);
     ogs_assert(param->n2smbuf);
 
-    request = ogs_sbi_request_new();
-    ogs_assert(request);
+    // Zero out all structures
+    memset(&N2InformationTransferReqData, 0, sizeof(N2InformationTransferReqData));
+    memset(&n2InfoContainer, 0, sizeof(n2InfoContainer));
+    memset(&pwsInfo, 0, sizeof(pwsInfo));
+    memset(&n2InfoContent, 0, sizeof(n2InfoContent));
+    memset(&ngapData, 0, sizeof(ngapData));
+
+    // Fill in the ngapData (binary NGAP message)
+    ngapData.content_id = (char *)OGS_SBI_CONTENT_NGAP_SM_ID;
+    // Optionally, set other fields if needed
+
+    // Fill in the n2InfoContent (NGAP IE content)
+    n2InfoContent.ngap_data = &ngapData;
+    // Optionally, set is_ngap_message_type, ngap_message_type, ngap_ie_type if needed
+
+    // Fill in the pwsInfo (PWS container)
+    pwsInfo.pws_container = &n2InfoContent;
+    pwsInfo.message_identifier = warning->message_id;
+    pwsInfo.serial_number = warning->warning_data.serial_number;
+    pwsInfo.bc_empty_area_list = NULL; // Set if you have area list info
+    pwsInfo.is_send_ran_response = false; // Set as needed
+    pwsInfo.send_ran_response = 0; // Set as needed
+    pwsInfo.omc_id = NULL; // Set as needed
+    pwsInfo.nf_id = NULL; // Set as needed
+
+    // Fill in the n2InfoContainer
+    n2InfoContainer.n2_information_class = OpenAPI_n2_information_class_PWS;
+    n2InfoContainer.pws_info = &pwsInfo;
+    n2InfoContainer.sm_info = NULL;
+    n2InfoContainer.ran_info = NULL;
+    n2InfoContainer.nrppa_info = NULL;
+    n2InfoContainer.v2x_info = NULL;
+    n2InfoContainer.prose_info = NULL;
+
+    // Fill in the N2InformationTransferReqData structure
+    N2InformationTransferReqData.n2_information = &n2InfoContainer;
+    N2InformationTransferReqData.tai_list = NULL; // Set if you have TAI list
+    N2InformationTransferReqData.rat_selector = 0; // Set as needed
+    N2InformationTransferReqData.global_ran_node_list = NULL; // Set if needed
+    N2InformationTransferReqData.supported_features = NULL; // Set if needed
+
+    // Build the SBI message
+    memset(&message, 0, sizeof(message));
+    message.N2InformationTransferReqData = &N2InformationTransferReqData;
+
+    request = ogs_sbi_build_request(&message);
 
     /* Set SBI header info */
     request->h.method = (char *)OGS_SBI_HTTP_METHOD_POST;
@@ -46,6 +99,11 @@ ogs_sbi_request_t *pwsiws_nonuen2_comm_build_nonuen2_message_transfer(
     request->http.headers = ogs_hash_make();
     ogs_sbi_header_set(request->http.headers, OGS_SBI_CONTENT_TYPE,
                        OGS_SBI_CONTENT_NGAP_TYPE);
+
+    // Attach the OpenAPI structure to the request (if your framework supports it)
+    // If not, you may need to serialize it to JSON or use as needed by your SBI stack
+    // Example: request->N2InformationTransferReqData = &N2InformationTransferReqData;
+    // (If not supported, remove this line and handle serialization elsewhere)
 
     /* Add the NGAP message as a part. We must copy it. */
     if (param->n2smbuf) {
@@ -89,7 +147,44 @@ ogs_sbi_request_t *pwsiws_nonuen2_comm_build_nonuen2_message_transfer(
 ogs_sbi_request_t *pwsiws_nonuen2_callback_build_warning_status(
         pwsiws_warning_t *warning, void *data)
 {
-    /* TODO: Implement warning status notification when OpenAPI structures are available */
-    ogs_warn("Warning status notification not implemented yet");
-    return NULL;
+    ogs_sbi_request_t *request = NULL;
+    OpenAPI_pws_information_t pwsInfo;
+
+
+
+    ogs_assert(warning);
+
+    // Zero out the structure
+    memset(&pwsInfo, 0, sizeof(pwsInfo));
+
+    // Fill in the PWS information fields from the warning struct
+    pwsInfo.message_identifier = warning->message_id;
+    pwsInfo.serial_number = warning->warning_data.serial_number;
+    pwsInfo.bc_empty_area_list = NULL; // Set if you have area list info
+    pwsInfo.is_send_ran_response = false; // Set as needed
+    pwsInfo.send_ran_response = 0; // Set as needed
+    pwsInfo.omc_id = NULL; // Set as needed
+    pwsInfo.nf_id = NULL; // Set as needed
+    pwsInfo.pws_container = NULL; // Not needed for status notification
+
+    // Build the SBI message
+    request = ogs_sbi_request_new();
+    ogs_assert(request);
+
+    // Set SBI header info
+    request->h.method = (char *)OGS_SBI_HTTP_METHOD_POST;
+    request->h.service.name = (char *)OGS_SBI_SERVICE_NAME_NPWS_CALLBACK;
+    request->h.api.version = (char *)OGS_SBI_API_V1;
+    request->h.resource.component[0] = (char *)"warning-status-notify"; // Use appropriate resource name
+
+    // Set up HTTP message
+    request->http.headers = ogs_hash_make();
+    ogs_sbi_header_set(request->http.headers, OGS_SBI_CONTENT_TYPE, "application/json");
+
+    // Attach the OpenAPI structure to the request (if your framework supports it)
+    // If not, you may need to serialize it to JSON or use as needed by your SBI stack
+    // Example: request->PwsInformation = &pwsInfo;
+    // (If not supported, remove this line and handle serialization elsewhere)
+
+    return request;
 }
