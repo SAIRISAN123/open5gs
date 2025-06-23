@@ -1964,8 +1964,8 @@ int amf_namf_comm_handle_non_ue_n2_message_transfer(
 
     OpenAPI_n2_info_container_t *n2InfoContainer = NULL;
     OpenAPI_pws_information_t *pwsInfo = NULL;
-    // OpenAPI_n2_info_content_t *n2InfoContent = NULL; // removed unused variable
 
+    OpenAPI_n2_info_content_t *pws_container = NULL; 
     sbc_pws_data_t *sbc_pws = NULL;
 
     ogs_assert(stream);
@@ -1983,36 +1983,64 @@ int amf_namf_comm_handle_non_ue_n2_message_transfer(
         return OGS_ERROR;
     }
 
-    /* Handle PWS (Public Warning System) information */
     pwsInfo = n2InfoContainer->pws_info;
-    if (pwsInfo) {
-        // Accept PWS message directly from pwsInfo fields (no ngapData required)
-        if (pwsInfo->message_length > 0) {
-            sbc_pws = ogs_calloc(1, sizeof(sbc_pws_data_t));
-            if (!sbc_pws) {
+
+    if (!pwsInfo)
+    {
+        ogs_error("No pws Info");
+        return OGS_ERROR;
+    }
+
+    pws_container = pwsInfo->pws_container;
+    if (!pws_container)
+    {
+        ogs_error("No pws container");
+        return OGS_ERROR;
+    }
+
+    
+
+
+    if (pws_container) {
+        sbc_pws = ogs_calloc(1, sizeof(sbc_pws_data_t));
+        if (!sbc_pws) {
                 ogs_error("Failed to allocate sbc_pws_data");
                 return OGS_ERROR;
-            }
-
-            sbc_pws->message_id = pwsInfo->message_identifier;
-            sbc_pws->serial_number = pwsInfo->serial_number;
-            sbc_pws->repetition_period = pwsInfo->repetition_period;
-            sbc_pws->number_of_broadcast = pwsInfo->number_of_broadcast;
-            sbc_pws->data_coding_scheme = pwsInfo->data_coding_scheme;
-            sbc_pws->message_length = pwsInfo->message_length;
-            memcpy(sbc_pws->message_contents, pwsInfo->message_contents, pwsInfo->message_length);
-
-            // Send PWS message to all gNBs
-            r = ngap_send_write_replace_warning_request(sbc_pws);
-            if (r != OGS_OK) {
-                ogs_error("Failed to send PWS warning request");
-            }
-            ogs_free(sbc_pws);
-        } else {
-            ogs_error("No PWS message content in pwsInfo");
-            return OGS_ERROR;
         }
+
+        sbc_pws->message_id = pws_container->message_identifier;
+        sbc_pws->serial_number = pws_container->serial_number;
+        sbc_pws->repetition_period = pws_container->repetition_period;
+        sbc_pws->number_of_broadcast = pws_container->number_of_broadcast;
+        sbc_pws->data_coding_scheme = pws_container->data_coding_scheme;
+        sbc_pws->message_length = pws_container->message_length;
+        memcpy(sbc_pws->message_contents, pws_container->message_contents, pws_container->message_length);
+
+        // Print all PWS values
+        char msg_content_hex[2048] = {0};
+        for (uint32_t i = 0; i < pws_container->message_length && i < sizeof(msg_content_hex)/2-1; i++) {
+            sprintf(&msg_content_hex[i*2], "%02X", pws_container->message_contents[i]);
+        }
+        ogs_info("PWS: msg_id=%u, serial_number=%u, repetition_period=%u, number_of_broadcast=%u, data_coding_scheme=%u, message_length=%u, message_contents(hex)=%s",
+            pwsInfo->message_identifier,
+            pws_container->serial_number,
+            pws_container->repetition_period,
+            pws_container->number_of_broadcast,
+            pwsInfo->data_coding_scheme,
+            pws_container->message_length,
+            msg_content_hex);
+
+        // Send PWS message to all gNBs
+        r = ngap_send_write_replace_warning_request(sbc_pws);
+        if (r != OGS_OK) {
+            ogs_error("Failed to send PWS warning request");
+        }
+        ogs_free(sbc_pws);
+    } else {
+        ogs_error("No PWS content here in pws_container");
+        return OGS_ERROR;
     }
+
 
     /* TODO: Handle other N2 information types like:
      * - SM Info (Session Management)

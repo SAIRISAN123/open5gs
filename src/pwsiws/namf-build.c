@@ -33,7 +33,7 @@ ogs_sbi_request_t *pwsiws_nonuen2_comm_build_nonuen2_message_transfer(
     OpenAPI_n2_information_transfer_req_data_t N2InformationTransferReqData;
     OpenAPI_n2_info_container_t n2InfoContainer;
     OpenAPI_pws_information_t pwsInfo;
-    OpenAPI_n2_info_content_t n2InfoContent;
+    OpenAPI_n2_info_content_t pws_container;
     OpenAPI_ref_to_binary_data_t ngapData;
 
     ogs_assert(warning);
@@ -45,31 +45,50 @@ ogs_sbi_request_t *pwsiws_nonuen2_comm_build_nonuen2_message_transfer(
     memset(&N2InformationTransferReqData, 0, sizeof(N2InformationTransferReqData));
     memset(&n2InfoContainer, 0, sizeof(n2InfoContainer));
     memset(&pwsInfo, 0, sizeof(pwsInfo));
-    memset(&n2InfoContent, 0, sizeof(n2InfoContent));
+    memset(&pws_container, 0, sizeof(pws_container));
     memset(&ngapData, 0, sizeof(ngapData));
 
-    // Ensure pws_container is always NULL
-    pwsInfo.pws_container = NULL;
+
+
 
     // Fill in the NGAP binary data
     ngapData.content_id = (char *)OGS_SBI_CONTENT_NGAP_SM_ID;
     // Optionally set other fields if needed
 
     // Fill in the N2 info content (NGAP IE content)
-    n2InfoContent.ngap_data = &ngapData;
+    pws_container.ngap_data = &ngapData;
     // Optionally set is_ngap_message_type, ngap_message_type, ngap_ie_type if needed
 
     // Fill in the PWS information
     pwsInfo.message_identifier = warning->message_id;
     pwsInfo.serial_number = warning->warning_data.serial_number;
-    pwsInfo.data_coding_scheme = warning->warning_data.data_coding_scheme;
-    pwsInfo.repetition_period = warning->warning_data.repetition_period;
-    pwsInfo.number_of_broadcast = warning->warning_data.number_of_broadcast;
-    pwsInfo.message_length = warning->warning_data.message_length;
-    memcpy(pwsInfo.message_contents, warning->warning_data.message_contents, warning->warning_data.message_length);
+    pwsInfo.data_coding_scheme = warning ->warning_data.data_coding_scheme;
+
     
+
+    pws_container.message_identifier = warning->message_id;
+    pws_container.serial_number = warning->warning_data.serial_number;
+    pws_container.data_coding_scheme = warning->warning_data.data_coding_scheme;
+    pws_container.repetition_period = warning->warning_data.repetition_period;
+    pws_container.number_of_broadcast = warning->warning_data.number_of_broadcast;
+    pws_container.message_length = warning->warning_data.message_length;
+    memcpy(pws_container.message_contents, warning->warning_data.message_contents, warning->warning_data.message_length);
+    
+   
+    ogs_info("[pwsiws] PWS: msg_id=%u, serial_number=%u, repetition_period=%u, number_of_broadcast=%u, data_coding_scheme=%u, message_length=%u",
+        pws_container.message_identifier,
+        pws_container.serial_number,
+        pws_container.repetition_period,
+        pws_container.number_of_broadcast,
+        pws_container.data_coding_scheme,
+        pws_container.message_length);
+
+
+
+
     // Additional PWS parameters (repetition_period, data_coding_scheme, etc.) are not present in OpenAPI_pws_information_t
     // If needed, extend the OpenAPI model and add here
+    pwsInfo.pws_container= &pws_container;
     pwsInfo.bc_empty_area_list = NULL; // Set if you have area list info
     pwsInfo.is_send_ran_response = false; // Set as needed
     pwsInfo.send_ran_response = 0; // Set as needed
