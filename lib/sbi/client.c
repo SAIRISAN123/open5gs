@@ -544,6 +544,9 @@ static connection_t *connection_add(
             ogs_debug("SENDING...[%d]", (int)request->http.content_length);
             if (request->http.content_length)
                 ogs_debug("%s", request->http.content);
+            if (request->http.content && request->http.content_length) {
+                ogs_info("Outgoing HTTP body: %.*s", (int)request->http.content_length, request->http.content);
+            }
         }
     }
 

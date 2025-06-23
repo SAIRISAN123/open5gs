@@ -203,6 +203,9 @@ void ogs_sbi_message_free(ogs_sbi_message_t *message)
         OpenAPI_ue_reg_status_update_req_data_free(message->UeRegStatusUpdateReqData);
     if (message->UeRegStatusUpdateRspData)
         OpenAPI_ue_reg_status_update_rsp_data_free(message->UeRegStatusUpdateRspData);
+    if (message->N2InformationTransferReqData)
+        OpenAPI_n2_information_transfer_req_data_free(
+                message->N2InformationTransferReqData);
     if (message->links) {
         OpenAPI_clear_and_free_string_list(message->links->items);
         if (message->links->self)
@@ -1438,6 +1441,10 @@ static char *build_json(ogs_sbi_message_t *message)
         item = OpenAPI_ue_reg_status_update_rsp_data_convertToJSON(
                 message->UeRegStatusUpdateRspData);
         ogs_assert(item);
+    } else if (message->N2InformationTransferReqData) {
+        item = OpenAPI_n2_information_transfer_req_data_convertToJSON(
+                message->N2InformationTransferReqData);
+        ogs_assert(item);
     }
 
     if (item) {
@@ -2243,6 +2250,17 @@ static int parse_json(ogs_sbi_message_t *message,
                     } else {
                         ogs_error("HTTP ERROR Status : %d",
                             message->res_status);
+                    }
+                    break;
+
+                CASE(OGS_SBI_RESOURCE_NAME_NON_UE_N2_MESSAGES)
+                    if (message->res_status == 0) {
+                        message->N2InformationTransferReqData =
+                            OpenAPI_n2_information_transfer_req_data_parseFromJSON(item);
+                        if (!message->N2InformationTransferReqData) {
+                            rv = OGS_ERROR;
+                            ogs_error("JSON parse error");
+                        }
                     }
                     break;
 

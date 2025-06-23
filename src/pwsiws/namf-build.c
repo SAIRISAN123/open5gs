@@ -97,17 +97,27 @@ ogs_sbi_request_t *pwsiws_nonuen2_comm_build_nonuen2_message_transfer(
     message.h.resource.component[0] = (char *)OGS_SBI_RESOURCE_NAME_NON_UE_N2_MESSAGES;
     message.N2InformationTransferReqData = &N2InformationTransferReqData;
 
-    
     // added for debug
     if (!message.N2InformationTransferReqData) {
         ogs_error("N2InformationTransferReqData is NULL before building request");
     } else {
         ogs_info("N2InformationTransferReqData populated: n2_information=%p", message.N2InformationTransferReqData->n2_information);
+        // Print the would-be JSON
+        char *dbg_json = cJSON_PrintUnformatted(OpenAPI_n2_information_transfer_req_data_convertToJSON(&N2InformationTransferReqData));
+        if (dbg_json) {
+            ogs_info("DEBUG: Would send N2InformationTransferReqData JSON: %s", dbg_json);
+            cJSON_free(dbg_json);
+        }
     }
 
-    
-    
     request = ogs_sbi_build_request(&message);
+
+    // Print num_of_part after building the request
+    ogs_info("DEBUG: request->http.num_of_part = %d", request->http.num_of_part);
+    // Print the actual HTTP body if present
+    ogs_info("DEBUG: request->http.content = %p, length = %zu", request->http.content, request->http.content_length);
+    if (request->http.content && request->http.content_length)
+        ogs_info("DEBUG: Actual HTTP body: %.*s", (int)request->http.content_length, request->http.content);
 
     // Set SBI header info (redundant, but for clarity)
     request->h.method = (char *)OGS_SBI_HTTP_METHOD_POST;
@@ -117,15 +127,7 @@ ogs_sbi_request_t *pwsiws_nonuen2_comm_build_nonuen2_message_transfer(
 
     // Set up HTTP message
     request->http.headers = ogs_hash_make();
-    ogs_sbi_header_set(request->http.headers, OGS_SBI_CONTENT_TYPE, OGS_SBI_CONTENT_NGAP_TYPE);
-
-    // Add the NGAP message as a part (copy)
-    if (param->n2smbuf) {
-        request->http.part[request->http.num_of_part].pkbuf = ogs_pkbuf_copy(param->n2smbuf);
-        request->http.part[request->http.num_of_part].content_id = (char *)OGS_SBI_CONTENT_NGAP_SM_ID;
-        request->http.part[request->http.num_of_part].content_type = (char *)OGS_SBI_CONTENT_NGAP_TYPE;
-        request->http.num_of_part++;
-    }
+    ogs_sbi_header_set(request->http.headers, OGS_SBI_CONTENT_TYPE, "application/json");
 
     // Add failure notification URI if requested
     if (param->nonuen2_failure_txf_notif_uri == true) {
