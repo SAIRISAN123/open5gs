@@ -77,17 +77,28 @@ typedef struct pwsiws_warning_s {
 
     /* Warning message content */
     struct {
+        // uint8_t     message_type;       /* Warning message type */
+        // uint16_t    serial_number;      /* Serial number */
+        // uint8_t     message_identifier[50]; /* Message identifier */
+        // uint8_t     data_coding_scheme; /* Data coding scheme */
+        // uint8_t     warning_security_information[50]; /* Security info */
+        // uint8_t     channel_indicator;  /* Channel indicator */
+        // uint8_t     warning_area_list[100]; /* Warning area list */
+        // uint8_t     repetition_period;  /* Repetition period */
+        // uint8_t     number_of_broadcasts_requested; /* Broadcast count */
+        // uint8_t     warning_message_content[960]; /* Message content */
+        // uint8_t     message_content_length; /* Content length */
+
         uint8_t     message_type;       /* Warning message type */
-        uint16_t    serial_number;      /* Serial number */
-        uint8_t     message_identifier[50]; /* Message identifier */
-        uint8_t     data_coding_scheme; /* Data coding scheme */
-        uint8_t     warning_security_information[50]; /* Security info */
-        uint8_t     channel_indicator;  /* Channel indicator */
-        uint8_t     warning_area_list[100]; /* Warning area list */
-        uint8_t     repetition_period;  /* Repetition period */
-        uint8_t     number_of_broadcasts_requested; /* Broadcast count */
-        uint8_t     warning_message_content[960]; /* Message content */
-        uint8_t     message_content_length; /* Content length */
+        uint16_t message_id;
+        uint16_t serial_number;
+        uint8_t warning_type;
+        uint32_t no_of_tai;
+        uint32_t repetition_period;
+        uint32_t number_of_broadcast;
+        uint8_t data_coding_scheme;
+        uint32_t message_length;
+        uint8_t message_contents[1024]; /* TODO: max 9600 */
     } warning_data;
 
     /* Broadcast status */

@@ -19,17 +19,17 @@
 
 #include "namf-build.h"
 #include "ngap-build.h"
-
+#include "openapi/model/non_ue_n2_message_transfer_request.h"
 
 ogs_sbi_request_t *pwsiws_nonuen2_comm_build_nonuen2_message_transfer(
         pwsiws_warning_t *warning, pwsiws_nonuen2_message_transfer_param_t *param)
 {
     ogs_sbi_message_t message;
     ogs_sbi_request_t *request = NULL;
-    
     ogs_sbi_server_t *server = NULL;
     ogs_sbi_header_t header;
-    
+
+    // --- OpenAPI structures ---
     OpenAPI_n2_information_transfer_req_data_t N2InformationTransferReqData;
     OpenAPI_n2_info_container_t n2InfoContainer;
     OpenAPI_pws_information_t pwsInfo;
@@ -48,25 +48,32 @@ ogs_sbi_request_t *pwsiws_nonuen2_comm_build_nonuen2_message_transfer(
     memset(&n2InfoContent, 0, sizeof(n2InfoContent));
     memset(&ngapData, 0, sizeof(ngapData));
 
-    // Fill in the ngapData (binary NGAP message)
+    // Fill in the NGAP binary data
     ngapData.content_id = (char *)OGS_SBI_CONTENT_NGAP_SM_ID;
-    // Optionally, set other fields if needed
+    // Optionally set other fields if needed
 
-    // Fill in the n2InfoContent (NGAP IE content)
+    // Fill in the N2 info content (NGAP IE content)
     n2InfoContent.ngap_data = &ngapData;
-    // Optionally, set is_ngap_message_type, ngap_message_type, ngap_ie_type if needed
+    // Optionally set is_ngap_message_type, ngap_message_type, ngap_ie_type if needed
 
-    // Fill in the pwsInfo (PWS container)
+    // Fill in the PWS information
     pwsInfo.pws_container = &n2InfoContent;
     pwsInfo.message_identifier = warning->message_id;
     pwsInfo.serial_number = warning->warning_data.serial_number;
+    pwsInfo.data_coding_scheme= warning->warning_data.data_coding_scheme;
+    pwsInfo.repetition_period = warning ->warning_data.repetition_period;
+    pwsInfo.message_length = warning -> warning_data.message_length;
+    memcpy(pwsInfo.message_contents, warning->warning_data.message_contents, warning->warning_data.message_length);
+    
+    // Additional PWS parameters (repetition_period, data_coding_scheme, etc.) are not present in OpenAPI_pws_information_t
+    // If needed, extend the OpenAPI model and add here
     pwsInfo.bc_empty_area_list = NULL; // Set if you have area list info
     pwsInfo.is_send_ran_response = false; // Set as needed
     pwsInfo.send_ran_response = 0; // Set as needed
     pwsInfo.omc_id = NULL; // Set as needed
     pwsInfo.nf_id = NULL; // Set as needed
 
-    // Fill in the n2InfoContainer
+    // Fill in the N2 info container
     n2InfoContainer.n2_information_class = OpenAPI_n2_information_class_PWS;
     n2InfoContainer.pws_info = &pwsInfo;
     n2InfoContainer.sm_info = NULL;
@@ -82,52 +89,54 @@ ogs_sbi_request_t *pwsiws_nonuen2_comm_build_nonuen2_message_transfer(
     N2InformationTransferReqData.global_ran_node_list = NULL; // Set if needed
     N2InformationTransferReqData.supported_features = NULL; // Set if needed
 
-    // Build the SBI message
+    // --- Build the SBI message ---
     memset(&message, 0, sizeof(message));
+    message.h.method = (char *)OGS_SBI_HTTP_METHOD_POST;
+    message.h.service.name = (char *)OGS_SBI_SERVICE_NAME_NAMF_COMM;
+    message.h.api.version = (char *)OGS_SBI_API_V1;
+    message.h.resource.component[0] = (char *)OGS_SBI_RESOURCE_NAME_NON_UE_N2_MESSAGES;
     message.N2InformationTransferReqData = &N2InformationTransferReqData;
 
+    
+    // added for debug
+    if (!message.N2InformationTransferReqData) {
+        ogs_error("N2InformationTransferReqData is NULL before building request");
+    } else {
+        ogs_info("N2InformationTransferReqData populated: n2_information=%p", message.N2InformationTransferReqData->n2_information);
+    }
+
+    
+    
     request = ogs_sbi_build_request(&message);
 
-    /* Set SBI header info */
+    // Set SBI header info (redundant, but for clarity)
     request->h.method = (char *)OGS_SBI_HTTP_METHOD_POST;
     request->h.service.name = (char *)OGS_SBI_SERVICE_NAME_NAMF_COMM;
     request->h.api.version = (char *)OGS_SBI_API_V1;
-    request->h.resource.component[0] =
-        (char *)OGS_SBI_RESOURCE_NAME_NON_UE_N2_MESSAGES;
+    request->h.resource.component[0] = (char *)OGS_SBI_RESOURCE_NAME_NON_UE_N2_MESSAGES;
 
-    /* Set up HTTP message */
+    // Set up HTTP message
     request->http.headers = ogs_hash_make();
-    ogs_sbi_header_set(request->http.headers, OGS_SBI_CONTENT_TYPE,
-                       OGS_SBI_CONTENT_NGAP_TYPE);
+    ogs_sbi_header_set(request->http.headers, OGS_SBI_CONTENT_TYPE, OGS_SBI_CONTENT_NGAP_TYPE);
 
-    // Attach the OpenAPI structure to the request (if your framework supports it)
-    // If not, you may need to serialize it to JSON or use as needed by your SBI stack
-    // Example: request->N2InformationTransferReqData = &N2InformationTransferReqData;
-    // (If not supported, remove this line and handle serialization elsewhere)
-
-    /* Add the NGAP message as a part. We must copy it. */
+    // Add the NGAP message as a part (copy)
     if (param->n2smbuf) {
         request->http.part[request->http.num_of_part].pkbuf = ogs_pkbuf_copy(param->n2smbuf);
-        request->http.part[request->http.num_of_part].content_id =
-            (char *)OGS_SBI_CONTENT_NGAP_SM_ID;
-        request->http.part[request->http.num_of_part].content_type =
-            (char *)OGS_SBI_CONTENT_NGAP_TYPE;
+        request->http.part[request->http.num_of_part].content_id = (char *)OGS_SBI_CONTENT_NGAP_SM_ID;
+        request->http.part[request->http.num_of_part].content_type = (char *)OGS_SBI_CONTENT_NGAP_TYPE;
         request->http.num_of_part++;
     }
 
-    /* Add failure notification URI if requested */
+    // Add failure notification URI if requested
     if (param->nonuen2_failure_txf_notif_uri == true) {
         server = ogs_sbi_server_first();
         if (server) {
             memset(&header, 0, sizeof(header));
             header.service.name = (char *)OGS_SBI_SERVICE_NAME_NPWS_CALLBACK;
             header.api.version = (char *)OGS_SBI_API_V1;
-            header.resource.component[0] =
-                    (char *)OGS_SBI_RESOURCE_NAME_N1_N2_FAILURE_NOTIFY;
-
+            header.resource.component[0] = (char *)OGS_SBI_RESOURCE_NAME_N1_N2_FAILURE_NOTIFY;
             char *failure_uri = ogs_sbi_server_uri(server, &header);
             if (failure_uri) {
-                /* Add as custom header for failure notification */
                 ogs_sbi_header_set(request->http.headers, OGS_SBI_CUSTOM_CALLBACK, failure_uri);
                 ogs_free(failure_uri);
             }
@@ -136,7 +145,7 @@ ogs_sbi_request_t *pwsiws_nonuen2_comm_build_nonuen2_message_transfer(
         }
     }
 
-    /* Add skip indicator if requested */
+    // Add skip indicator if requested
     if (param->skip_ind == true) {
         ogs_sbi_header_set(request->http.headers, "Skip-Indicator", "true");
     }

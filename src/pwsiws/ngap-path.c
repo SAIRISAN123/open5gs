@@ -48,12 +48,12 @@ int pwsiws_ngap_send_write_replace_warning_request(sbc_pws_data_t *sbc_pws)
     warning->warning_data.message_type = 1; /* Write Replace Warning */
     warning->warning_data.serial_number = sbc_pws->serial_number;
     warning->warning_data.repetition_period = sbc_pws->repetition_period;
-    warning->warning_data.number_of_broadcasts_requested = sbc_pws->number_of_broadcast;
+    warning->warning_data.number_of_broadcast = sbc_pws->number_of_broadcast;
     warning->warning_data.data_coding_scheme = sbc_pws->data_coding_scheme;
     
-    if (sbc_pws->message_length > 0 && sbc_pws->message_length <= sizeof(warning->warning_data.warning_message_content)) {
-        warning->warning_data.message_content_length = sbc_pws->message_length;
-        memcpy(warning->warning_data.warning_message_content, sbc_pws->message_contents, sbc_pws->message_length);
+    if (sbc_pws->message_length > 0 && sbc_pws->message_length <= sizeof(warning->warning_data.message_contents)) {
+        warning->warning_data.message_length = sbc_pws->message_length;
+        memcpy(warning->warning_data.message_contents, sbc_pws->message_contents, sbc_pws->message_length);
     }
 
     /* Build NGAP message */

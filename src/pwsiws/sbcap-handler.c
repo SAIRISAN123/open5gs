@@ -156,16 +156,16 @@ void pwsiws_sbcap_handle_write_replace_warning_request(
     if (repetition_period)
         warning->warning_data.repetition_period = *repetition_period;
     if (broadcast_requested)
-        warning->warning_data.number_of_broadcasts_requested = *broadcast_requested;
+        warning->warning_data.number_of_broadcast = *broadcast_requested;
     if (data_coding_scheme) {
         uint8_t dcs = 0;
         memcpy(&dcs, data_coding_scheme->buf, sizeof(uint8_t));
         warning->warning_data.data_coding_scheme = dcs;
     }
     if (warning_message_content && warning_message_content->size > 0) {
-        memcpy(warning->warning_data.warning_message_content,
+        memcpy(warning->warning_data.message_contents,
                 warning_message_content->buf, warning_message_content->size);
-        warning->warning_data.message_content_length = warning_message_content->size;
+        warning->warning_data.message_length = warning_message_content->size;
     }
 
     pwsiws_nonuen2_message_transfer_param_t param;

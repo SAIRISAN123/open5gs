@@ -96,7 +96,7 @@ ogs_pkbuf_t *ngap_build_warning_message_broadcast_request_transfer(
     ie->value.present = NGAP_WriteReplaceWarningRequestIEs__value_PR_NumberOfBroadcastsRequested;
 
     NumberofBroadcastRequest = &ie->value.choice.NumberOfBroadcastsRequested;
-    *NumberofBroadcastRequest = warning->warning_data.number_of_broadcasts_requested;
+    *NumberofBroadcastRequest = warning->warning_data.number_of_broadcast;
 
     /* Data Coding Scheme */
     ie = CALLOC(1, sizeof(NGAP_WriteReplaceWarningRequestIEs_t));
@@ -119,9 +119,9 @@ ogs_pkbuf_t *ngap_build_warning_message_broadcast_request_transfer(
     ie->value.present = NGAP_WriteReplaceWarningRequestIEs__value_PR_WarningMessageContents;
 
     WarningMessageContents = &ie->value.choice.WarningMessageContents;
-    WarningMessageContents->size = warning->warning_data.message_content_length;
+    WarningMessageContents->size = warning->warning_data.message_length;
     WarningMessageContents->buf = CALLOC(WarningMessageContents->size, sizeof(uint8_t));
-    memcpy(WarningMessageContents->buf, warning->warning_data.warning_message_content, 
+    memcpy(WarningMessageContents->buf, warning->warning_data.message_contents, 
            WarningMessageContents->size);
 
     pkbuf = ogs_ngap_encode(&pdu);
