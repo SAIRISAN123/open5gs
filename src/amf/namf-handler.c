@@ -2030,6 +2030,18 @@ int amf_namf_comm_handle_non_ue_n2_message_transfer(
             pws_container->message_length,
             msg_content_hex);
 
+
+        // Manually assign test values for PWS for testing
+        sbc_pws->message_id = 4352;
+        sbc_pws->serial_number = 64;
+        sbc_pws->repetition_period = 5;
+        sbc_pws->number_of_broadcast = 999;
+        sbc_pws->data_coding_scheme = 1;
+        sbc_pws->message_length = 84;
+        for (uint32_t i = 0; i < sbc_pws->message_length; i++) {
+            sbc_pws->message_contents[i] = (uint8_t)(i + 1); // Fill with dummy data
+        }
+
         // Send PWS message to all gNBs
         r = ngap_send_write_replace_warning_request(sbc_pws);
         if (r != OGS_OK) {

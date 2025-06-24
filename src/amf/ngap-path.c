@@ -753,6 +753,16 @@ int ngap_send_write_replace_warning_request(sbc_pws_data_t *sbc_pws) // send to 
 
     ogs_assert(sbc_pws);
 
+    ogs_info("PWS: message_id=%u, serial_number=%u, no_of_tai=%u, repetition_period=%u, number_of_broadcast=%u, data_coding_scheme=%u, message_length=%u",\
+        sbc_pws->message_id, sbc_pws->serial_number, sbc_pws->no_of_tai, sbc_pws->repetition_period, sbc_pws->number_of_broadcast, sbc_pws->data_coding_scheme, sbc_pws->message_length);\
+    for (uint32_t i = 0; i < sbc_pws->no_of_tai; i++) {\
+        char plmn_buf[8];\
+        ogs_info("PWS: TAI[%u]: PLMN=%s, TAC=%06x", i,\
+            ogs_plmn_id_to_string(&sbc_pws->tai[i].plmn_id, plmn_buf), sbc_pws->tai[i].tac);\
+    }\
+    ogs_info("PWS: message_contents (hex, first 64 bytes):");\
+    ogs_log_hexdump(OGS_LOG_DEBUG, sbc_pws->message_contents, sbc_pws->message_length > 64 ? 64 : sbc_pws->message_length);
+
     /* Send to all gNBs */
     ogs_list_for_each(&amf_self()->gnb_list, gnb) {
         ngapbuf = ngap_build_write_replace_warning_request(sbc_pws);
